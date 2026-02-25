@@ -79,15 +79,15 @@
     },
     "scripts": {
         "auto-scripts": {
-            "cache:clear": "symfony-cmd",
-            "assets:install %PUBLIC_DIR%": "symfony-cmd",
-            "importmap:install": "symfony-cmd"
+            "cache:clear": "echo 'skipping cache:clear'",
+            "assets:install %PUBLIC_DIR%": "echo 'skipping assets:install'",
+            "importmap:install": "echo 'skipping importmap:install'"
         },
         "post-install-cmd": [
-            "@auto-scripts"
+            "echo 'skipping post-install-cmd'"
         ],
         "post-update-cmd": [
-            "@auto-scripts"
+            "echo 'skipping post-update-cmd'"
         ]
     },
     "conflict": {
@@ -108,4 +108,6 @@
         "symfony/stopwatch": "8.0.*",
         "symfony/web-profiler-bundle": "8.0.*"
     }
+    
+    
 }
