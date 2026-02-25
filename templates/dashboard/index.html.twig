@@ -1,0 +1,735 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Visão Geral Estratégica{% endblock %}
+{% block page_title %}Visão Geral Estratégica{% endblock %}
+{% block page_subtitle %}Inteligência de preços · tempo real{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ═══════════════════════════════════════
+   BASE
+═══════════════════════════════════════ */
+.vg-wrap { display:flex; flex-direction:column; gap:16px; }
+
+/* ═══════════════════════════════════════
+   KPI ROW
+═══════════════════════════════════════ */
+.kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+}
+@media(max-width:1300px){ .kpi-row { grid-template-columns: repeat(3,1fr); } }
+@media(max-width:800px) { .kpi-row { grid-template-columns: 1fr 1fr; } }
+
+.kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px 16px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.kpi-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--text-muted);
+}
+.kpi-value-xl {
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+}
+.kpi-value-md {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.25;
+    margin-top: 4px;
+}
+.kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top:2px; }
+.kpi-sub-green { font-size: 12px; color: var(--green); font-weight:600; margin-top:2px; }
+.kpi-badge-disp {
+    display: inline-block;
+    margin-top: 8px;
+    background: #fef3c7;
+    color: #b45309;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid #fde68a;
+}
+
+/* ═══════════════════════════════════════
+   MAIN ROW
+═══════════════════════════════════════ */
+.main-row {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 14px;
+    align-items: start;   /* termômetro cresce, sidebar fica no topo */
+}
+@media(max-width:1200px){ .main-row { grid-template-columns:1fr; } }
+
+/* Sidebar: não segue a altura do termômetro */
+.sidebar-fixed {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    align-self: start;    /* não estica com o grid */
+}
+
+/* Termômetro: limita altura e rola internamente */
+.thermo-scroll {
+    max-height: 460px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════════
+   CARD
+═══════════════════════════════════════ */
+.vg-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+.vg-card-hd {
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+}
+.vg-card-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--text-secondary);
+}
+
+/* ═══════════════════════════════════════
+   TERMÔMETRO — faixa min→max preenchida
+═══════════════════════════════════════ */
+.thermo-list { padding: 12px 18px 8px; display:flex; flex-direction:column; gap:0; }
+.thermo-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid #f0f2f8;
+}
+.thermo-row:last-child { border-bottom:none; }
+
+.thermo-label-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.thermo-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.thermo-min-lbl {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--brand);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Barra */
+.thermo-bar-wrap {
+    position: relative;
+    height: 44px;
+    display: flex;
+    align-items: center;
+}
+
+/* trilho cinza — ocupa 100% da largura */
+.thermo-track {
+    position: absolute;
+    left: 0; right: 0;
+    height: 10px;
+    background: #e8ecf5;
+    border-radius: 5px;
+}
+
+/* faixa min→max preenchida com gradiente azul→vermelho */
+.thermo-fill {
+    position: absolute;
+    height: 10px;
+    border-radius: 5px;
+    background: linear-gradient(to right, #3b82f6, #ef4444);
+}
+
+/* marcador vertical da média */
+.thermo-avg-pin {
+    position: absolute;
+    width: 3px;
+    height: 20px;
+    background: #1e3a8a;
+    border-radius: 2px;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* label flutuante da média (acima) */
+.thermo-avg-lbl {
+    position: absolute;
+    bottom: calc(50% + 13px);
+    font-size: 10px;
+    font-weight: 600;
+    color: #1e3a8a;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    pointer-events: none;
+    background: rgba(255,255,255,.85);
+    padding: 0 2px;
+    border-radius: 3px;
+}
+
+/* ponto vermelho no máximo */
+.thermo-max-dot {
+    position: absolute;
+    top: 50%;
+    width: 11px;
+    height: 11px;
+    background: #ef4444;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+
+/* label do máximo (acima) */
+.thermo-max-lbl {
+    position: absolute;
+    bottom: calc(50% + 13px);
+    font-size: 10px;
+    font-weight: 700;
+    color: #dc2626;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    pointer-events: none;
+    background: rgba(255,255,255,.85);
+    padding: 0 2px;
+    border-radius: 3px;
+}
+
+/* ═══════════════════════════════════════
+   RANKING
+═══════════════════════════════════════ */
+.rank-table { width:100%; border-collapse:collapse; font-size:12px; }
+.rank-table th {
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.04em; color:var(--text-muted);
+    padding:8px 12px; border-bottom:1px solid var(--border); text-align:left;
+}
+.rank-table th:not(:first-child) { text-align:center; }
+.rank-table td { padding:8px 12px; border-bottom:1px solid #f0f2f8; }
+.rank-table tr:last-child td { border-bottom:none; }
+.rank-table td:not(:first-child) { text-align:center; font-variant-numeric:tabular-nums; }
+.rank-score {
+    background: var(--brand-light);
+    color: var(--brand);
+    font-weight:700; font-size:11px;
+    padding:2px 8px; border-radius:10px; display:inline-block;
+}
+
+/* ═══════════════════════════════════════
+   HEATMAP — por faixas de preço
+═══════════════════════════════════════ */
+.hm-table { width:100%; border-collapse:collapse; }
+.hm-table th {
+    font-size:12px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.04em; color:var(--text-muted);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+    background: var(--surface);
+    white-space: nowrap;
+}
+.hm-table th:first-child { text-align:left; min-width:160px; }
+.hm-table td {
+    padding: 0;
+    border: 2px solid var(--bg);
+    height: 50px;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 600;
+    vertical-align: middle;
+    transition: filter .15s;
+    position: relative;
+}
+.hm-table td:first-child {
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: var(--surface);
+    text-align: left;
+    border-right: 1px solid var(--border);
+}
+.hm-table td:hover:not(:first-child) { filter: brightness(.93); cursor: default; }
+
+/* célula: mostra preço mínimo da faixa se houver dados */
+.hm-cell-val {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+.hm-cell-sub {
+    font-size: 9.5px;
+    opacity: .75;
+    font-weight: 400;
+}
+
+/* cores por intensidade */
+.hm-0  { background:#f0f2f8; color:var(--text-muted); }
+.hm-g1 { background:#d1fae5; color:#065f46; }
+.hm-g2 { background:#6ee7b7; color:#064e3b; }
+.hm-g3 { background:#10b981; color:#fff; }
+.hm-g4 { background:#047857; color:#fff; }
+.hm-r1 { background:#fecaca; color:#991b1b; }
+.hm-r2 { background:#f87171; color:#fff; }
+.hm-r3 { background:#dc2626; color:#fff; }
+.hm-y1 { background:#fef3c7; color:#92400e; }
+.hm-y2 { background:#fde68a; color:#78350f; }
+.hm-y3 { background:#f59e0b; color:#fff; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="vg-wrap">
+
+{# ══════════════════════════════════════════════════════
+   KPI ROW
+══════════════════════════════════════════════════════ #}
+<div class="kpi-row">
+
+    <div class="kpi-card">
+        <div class="kpi-label">Unidades Ativas no Radar</div>
+        <div class="kpi-value-xl">{{ kpi.units_today|default(0) }}</div>
+        <div class="kpi-sub">Unidades Monitoradas Hoje</div>
+        <div class="kpi-sub-green">+0 desde a última semana</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-label">Procedimentos Monitorados</div>
+        <div class="kpi-value-xl">{{ kpi.procedures_today|default(0) }}</div>
+        <div class="kpi-sub">Procedimentos Estratégicos</div>
+        <div class="kpi-sub" style="color:var(--text-muted)">Laboratoriais – Curitiba</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-label">Maior Dispersão de Preço</div>
+        <div class="kpi-value-md">
+            {{ kpi.max_dispersion_name|default('—')|slice(0,22) }}{% if (kpi.max_dispersion_name|default('')|length) > 22 %}…{% endif %}
+        </div>
+        <div class="kpi-sub" style="font-variant-numeric:tabular-nums">
+            {% if kpi.max_dispersion_min is defined and kpi.max_dispersion_min %}
+                R$ {{ kpi.max_dispersion_min|number_format(2,',','.') }}
+                → R$ {{ kpi.max_dispersion_max|number_format(2,',','.') }}
+            {% endif %}
+        </div>
+        {% if kpi.max_dispersion_pct is defined and kpi.max_dispersion_pct %}
+        <span class="kpi-badge-disp">Dispersão: {{ kpi.max_dispersion_pct|number_format(0) }}%</span>
+        {% endif %}
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-label">Menor Preço do Dia</div>
+        <div class="kpi-value-md" style="font-size:16px;margin-top:6px;color:var(--text-secondary)">
+            {{ kpi.cheapest_name|default('—')|slice(0,20) }}
+        </div>
+        <div class="kpi-value-xl" style="font-size:36px">
+            {% if kpi.cheapest_price is defined and kpi.cheapest_price %}
+                R$ {{ kpi.cheapest_price|number_format(2,',','.') }}
+            {% else %}—{% endif %}
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-label">Oportunidade de Arbitragem</div>
+        <div class="kpi-sub" style="margin-top:8px;line-height:1.5;color:var(--text-secondary)">
+            Diferença média entre menor e maior preço:
+        </div>
+        <div class="kpi-value-xl" style="font-size:36px;margin-top:4px">
+            {% if kpi.max_dispersion_pct is defined and kpi.max_dispersion_pct %}
+                +{{ kpi.max_dispersion_pct|number_format(0) }}%
+            {% else %}—{% endif %}
+        </div>
+    </div>
+
+</div>
+
+{# ══════════════════════════════════════════════════════
+   MAIN ROW — Termômetro + Sidebar
+══════════════════════════════════════════════════════ #}
+<div class="main-row">
+
+    {# ── Termômetro ── #}
+    <div class="vg-card">
+        <div class="vg-card-hd">
+            <div class="vg-card-title">Termômetro de Mercado</div>
+        </div>
+        {% if thermoData is empty %}
+        <div style="padding:40px;text-align:center;color:var(--text-muted)">
+            <i class="bi bi-thermometer" style="font-size:28px"></i>
+            <p>Nenhum dado coletado hoje ainda.</p>
+        </div>
+        {% else %}
+
+        {# Escala global pelo max absoluto de todos os exames #}
+        {% set globalMax = 1 %}
+        {% set globalMin = 999999 %}
+        {% for row in thermoData|slice(0,15) %}
+            {% if row.max_price > globalMax %}{% set globalMax = row.max_price %}{% endif %}
+            {% if row.min_price < globalMin %}{% set globalMin = row.min_price %}{% endif %}
+        {% endfor %}
+        {% set globalRange = globalMax - globalMin %}
+        {% if globalRange < 1 %}{% set globalRange = 1 %}{% endif %}
+
+        {# Margem lateral de 3% para os labels não cortarem #}
+        {% set margin = 3 %}
+        {% set usable  = 100 - (margin * 2) %}
+
+        <div class="thermo-scroll"><div class="thermo-list">
+        {% for row in thermoData|slice(0,15) %}
+            {# posição em % dentro da área útil #}
+            {% set minPct  = margin + ((row.min_price  - globalMin) / globalRange * usable)|round %}
+            {% set avgPct  = margin + ((row.avg_price  - globalMin) / globalRange * usable)|round %}
+            {% set maxPct  = margin + ((row.max_price  - globalMin) / globalRange * usable)|round %}
+            {% set fillW   = maxPct - minPct %}
+
+            <div class="thermo-row">
+                {# Nome + preço mínimo #}
+                <div class="thermo-label-col">
+                    <div class="thermo-name" title="{{ row.name }}">
+                        {{ row.name|slice(0,16) }}{% if row.name|length > 16 %}…{% endif %}
+                    </div>
+                    <div class="thermo-min-lbl">R$ {{ row.min_price|number_format(2,',','.') }}</div>
+                </div>
+
+                {# Barra #}
+                <div class="thermo-bar-wrap">
+                    {# trilho cinza #}
+                    <div class="thermo-track"></div>
+
+                    {# faixa colorida min→max #}
+                    <div class="thermo-fill"
+                         style="left:{{ minPct }}%;width:{{ fillW > 1 ? fillW : 1 }}%"></div>
+
+                    {# label média (acima) #}
+                    <span class="thermo-avg-lbl" style="left:{{ avgPct }}%">
+                        R$ {{ row.avg_price|number_format(2,',','.') }}
+                    </span>
+                    {# pino da média #}
+                    <div class="thermo-avg-pin" style="left:{{ avgPct }}%"></div>
+
+                    {# label máximo (acima) — só se distante o suficiente da média #}
+                    {% if (maxPct - avgPct) > 8 %}
+                    <span class="thermo-max-lbl" style="left:{{ maxPct }}%">
+                        R$ {{ row.max_price|number_format(2,',','.') }}
+                    </span>
+                    {% endif %}
+                    {# ponto vermelho no máximo #}
+                    <div class="thermo-max-dot" style="left:{{ maxPct }}%"></div>
+                </div>
+            </div>
+        {% endfor %}
+        </div></div>
+        {% endif %}
+    </div>
+
+    {# ── Sidebar ── #}
+    <div class="sidebar-fixed">
+
+        {# Tendência Semanal — altura aumentada #}
+        <div class="vg-card">
+            <div class="vg-card-hd">
+                <div class="vg-card-title">Tendência Semanal</div>
+            </div>
+            <div style="padding:14px 16px 10px">
+                <div style="display:flex;gap:10px;align-items:stretch">
+                    <div style="flex:1;height:200px">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+                <div style="text-align:center;font-size:10px;color:var(--text-muted);margin-top:8px">
+                    Últimos 7 dias
+                </div>
+            </div>
+        </div>
+
+        {# Ranking de Competitividade #}
+        <div class="vg-card">
+            <div class="vg-card-hd">
+                <div class="vg-card-title">Ranking de Competitividade</div>
+            </div>
+            {% if competitiveness is empty %}
+            <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">Sem dados hoje.</div>
+            {% else %}
+            <table class="rank-table">
+                <thead>
+                    <tr>
+                        <th>Unidade</th>
+                        <th>Nº de proc.<br>menor preço</th>
+                        <th>Índice<br>Comp.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% set maxLeads = competitiveness[0].qtd_liderancas %}
+                {% for u in competitiveness|slice(0,6) %}
+                <tr>
+                    <td style="font-weight:500">
+                        {{ u.facility_name|default('—')|slice(0,18) }}{% if (u.facility_name|default('')|length) > 18 %}…{% endif %}
+                    </td>
+                    <td>{{ u.qtd_liderancas }}</td>
+                    <td>
+                        {% set score = maxLeads > 0 ? (u.qtd_liderancas / maxLeads * 100)|round : 0 %}
+                        <span class="rank-score">{{ score }}/100</span>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+{# ══════════════════════════════════════════════════════
+   HEATMAP — por faixas de preço (como no Gemini)
+══════════════════════════════════════════════════════ #}
+<div class="vg-card">
+    <div class="vg-card-hd">
+        <div class="vg-card-title">Dispersão de Preços por Procedimento</div>
+    </div>
+    <div style="overflow-x:auto">
+    {% if heatmap is empty %}
+    <div style="padding:30px;text-align:center;color:var(--text-muted)">Sem dados para o heatmap hoje.</div>
+    {% else %}
+
+    {#
+        Faixas de preço fixas:
+        Faixa A: R$ 0–10
+        Faixa B: R$ 11–30
+        Faixa C: R$ 31–50
+        Faixa D: R$ 50+
+
+        Para cada procedimento + faixa:
+        - Verifica se min, avg ou max caem nessa faixa
+        - Intensidade da cor = proporcional ao quanto do preço está na faixa
+    #}
+
+    <table class="hm-table">
+        <thead>
+            <tr>
+                <th>Procedimento</th>
+                <th>Faixa R$ 0–10</th>
+                <th>Faixa R$ 11–30</th>
+                <th>Faixa R$ 31–50</th>
+                <th>Faixa R$ 50+</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for procId, row in heatmap %}
+            {% set procName = heatmapNames[procId]|default('—') %}
+            {% set mn  = row.min|default(0) %}
+            {% set av  = row.avg|default(0) %}
+            {% set mx  = row.max|default(0) %}
+            {% set dsp = row.disp|default(0) %}
+
+            {# Determina cor de cada faixa baseada em se a média cai ali #}
+            {# Verde = preço baixo (bom para paciente), vermelho = preço alto, amarelo = médio #}
+
+            {# Faixa A: 0-10 #}
+            {% if av <= 10 %}
+                {% set fa_class = 'hm-g4' %}
+                {% set fa_val = 'R$ ' ~ mn|number_format(2,',','.') %}
+                {% set fa_sub = 'mín' %}
+            {% elseif mn <= 10 %}
+                {% set fa_class = 'hm-g2' %}
+                {% set fa_val = 'R$ ' ~ mn|number_format(2,',','.') %}
+                {% set fa_sub = 'mín' %}
+            {% else %}
+                {% set fa_class = 'hm-0' %}
+                {% set fa_val = '—' %}
+                {% set fa_sub = '' %}
+            {% endif %}
+
+            {# Faixa B: 11-30 #}
+            {% if av > 10 and av <= 30 %}
+                {% set fb_class = 'hm-y2' %}
+                {% set fb_val = 'R$ ' ~ av|number_format(2,',','.') %}
+                {% set fb_sub = 'média' %}
+            {% elseif mn > 10 and mn <= 30 %}
+                {% set fb_class = 'hm-y1' %}
+                {% set fb_val = 'R$ ' ~ mn|number_format(2,',','.') %}
+                {% set fb_sub = 'mín' %}
+            {% elseif mx > 10 and mx <= 30 %}
+                {% set fb_class = 'hm-y1' %}
+                {% set fb_val = 'R$ ' ~ mx|number_format(2,',','.') %}
+                {% set fb_sub = 'máx' %}
+            {% else %}
+                {% set fb_class = 'hm-0' %}
+                {% set fb_val = '—' %}
+                {% set fb_sub = '' %}
+            {% endif %}
+
+            {# Faixa C: 31-50 #}
+            {% if av > 30 and av <= 50 %}
+                {% set fc_class = 'hm-r2' %}
+                {% set fc_val = 'R$ ' ~ av|number_format(2,',','.') %}
+                {% set fc_sub = 'média' %}
+            {% elseif mx > 30 and mx <= 50 %}
+                {% set fc_class = 'hm-r1' %}
+                {% set fc_val = 'R$ ' ~ mx|number_format(2,',','.') %}
+                {% set fc_sub = 'máx' %}
+            {% else %}
+                {% set fc_class = 'hm-0' %}
+                {% set fc_val = '—' %}
+                {% set fc_sub = '' %}
+            {% endif %}
+
+            {# Faixa D: 50+ #}
+            {% if mx > 50 %}
+                {% set fd_class = av > 50 ? 'hm-r3' : 'hm-r1' %}
+                {% set fd_val = 'R$ ' ~ mx|number_format(2,',','.') %}
+                {% set fd_sub = 'máx' %}
+            {% else %}
+                {% set fd_class = 'hm-0' %}
+                {% set fd_val = '—' %}
+                {% set fd_sub = '' %}
+            {% endif %}
+
+            <tr>
+                <td title="{{ procName }}">
+                    {{ procName|slice(0,24) }}{% if procName|length > 24 %}…{% endif %}
+                </td>
+                <td class="{{ fa_class }}">
+                    {% if fa_val != '—' %}
+                    <div class="hm-cell-val">{{ fa_val }}</div>
+                    {% if fa_sub %}<div class="hm-cell-sub">{{ fa_sub }}</div>{% endif %}
+                    {% else %}—{% endif %}
+                </td>
+                <td class="{{ fb_class }}">
+                    {% if fb_val != '—' %}
+                    <div class="hm-cell-val">{{ fb_val }}</div>
+                    {% if fb_sub %}<div class="hm-cell-sub">{{ fb_sub }}</div>{% endif %}
+                    {% else %}—{% endif %}
+                </td>
+                <td class="{{ fc_class }}">
+                    {% if fc_val != '—' %}
+                    <div class="hm-cell-val">{{ fc_val }}</div>
+                    {% if fc_sub %}<div class="hm-cell-sub">{{ fc_sub }}</div>{% endif %}
+                    {% else %}—{% endif %}
+                </td>
+                <td class="{{ fd_class }}">
+                    {% if fd_val != '—' %}
+                    <div class="hm-cell-val">{{ fd_val }}</div>
+                    {% if fd_sub %}<div class="hm-cell-sub">{{ fd_sub }}</div>{% endif %}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    </div>
+</div>
+
+</div>{# /vg-wrap #}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size   = 11;
+Chart.defaults.color       = '#9399ad';
+
+const trendLabels = {{ trendLabels|raw }};
+const trendAvg    = {{ trendAvgValues|raw }};
+const fmtD = d => { if(!d) return ''; const p=d.split('-'); return p[2]+'/'+p[1]; };
+
+const ctx  = document.getElementById('trendChart').getContext('2d');
+const grad = ctx.createLinearGradient(0, 0, 0, 200);
+grad.addColorStop(0, 'rgba(37,99,235,.18)');
+grad.addColorStop(1, 'rgba(37,99,235,0)');
+
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: trendLabels.map(fmtD),
+        datasets: [{
+            data: trendAvg,
+            borderColor: '#2563eb',
+            backgroundColor: grad,
+            borderWidth: 2.5,
+            pointRadius: 3,
+            pointBackgroundColor: '#2563eb',
+            pointHoverRadius: 5,
+            tension: 0.4,
+            fill: true,
+        }],
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#1a1d2e',
+                titleColor: '#e2e8f0',
+                bodyColor: '#9399ad',
+                borderColor: '#2d3251',
+                borderWidth: 1,
+                padding: 10,
+                callbacks: {
+                    label: c => ' R$ ' + c.parsed.y.toFixed(2).replace('.', ','),
+                },
+            },
+        },
+        scales: {
+            x: {
+                grid: { display: false },
+                ticks: {
+                    color: '#9399ad',
+                    maxRotation: 0,
+                    autoSkip: true,
+                    maxTicksLimit: 8,
+                },
+                bounds: 'data',
+            },
+            y: {
+                display: true,
+                grid: { color: '#f0f2f8', drawBorder: false },
+                ticks: {
+                    color: '#9399ad',
+                    callback: v => 'R$ ' + v.toFixed(0),
+                    maxTicksLimit: 5,
+                },
+            },
+        },
+        layout: {
+            padding: { right: 12 },
+        },
+    },
+});
+</script>
+{% endblock %}

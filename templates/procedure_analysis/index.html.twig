@@ -1,0 +1,701 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Análise por Exame{% endblock %}
+{% block page_title %}Análise por Exame{% endblock %}
+{% block page_subtitle %}Diagnóstico estratégico · distribuição · competitividade{% endblock %}
+
+{# ══ FILTROS CONTEXTUAIS NA TOPBAR ══════════════════════════════════════════ #}
+{% block topbar_filters %}
+<form method="GET" action="{{ path('procedure_analysis_index') }}" class="topbar-filter-form">
+    <div class="topbar-filter-group" style="min-width:240px;max-width:340px">
+        <label class="topbar-filter-label">Procedimento / Exame</label>
+        <select name="procedure_id"
+                class="topbar-filter-select select2-single"
+                data-search-url="{{ path('search_procedures') }}"
+                data-selected-id="{{ procedureId }}"
+                data-selected-text="{{ selectedProcedure.name ?? selectedProcedure.tussCode ?? '' }}">
+        </select>
+    </div>
+    <div class="topbar-filter-group" style="width:130px">
+        <label class="topbar-filter-label">De</label>
+        <input type="date" name="date_from" class="topbar-filter-input" value="{{ filter.dateFrom }}">
+    </div>
+    <div class="topbar-filter-group" style="width:130px">
+        <label class="topbar-filter-label">Até</label>
+        <input type="date" name="date_to" class="topbar-filter-input" value="{{ filter.dateTo }}">
+    </div>
+    <div class="topbar-filter-group">
+        <button type="submit" class="topbar-filter-btn">
+            <i class="bi bi-search"></i> Analisar
+        </button>
+        {% if procedureId %}
+        <a href="{{ path('procedure_analysis_index') }}" class="topbar-filter-reset" style="margin-top:4px">
+            <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+    </div>
+</form>
+{% endblock %}
+
+{% block topbar_actions %}
+    {% if procedureId %}
+    <button class="btn-csv" onclick="exportTableToCSV('procTable','exame-historico.csv')">
+        <i class="bi bi-download"></i> Exportar CSV
+    </button>
+    {% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ═══════════════════════════════════════
+   HEADER INTELIGENTE DO EXAME
+═══════════════════════════════════════ */
+.exam-header {
+    background: linear-gradient(135deg, #1e3a6e 0%, #1a5276 60%, #0e6655 100%);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 4px 20px rgba(30,58,110,.25);
+}
+.exam-header-icon {
+    width: 52px; height: 52px;
+    background: rgba(255,255,255,.15);
+    border-radius: 14px;
+    display: flex; align-items:center; justify-content:center;
+    font-size: 24px; color: #fff; flex-shrink:0;
+}
+.exam-header-title { font-size: 24px; font-weight: 700; color: #fff; line-height:1.2; }
+.exam-header-sub   { font-size: 12px; color: rgba(255,255,255,.65); margin-top: 4px; font-family: 'DM Mono', monospace; }
+.exam-header-badge {
+    margin-left: auto; flex-shrink:0;
+    background: rgba(255,255,255,.15);
+    color: rgba(255,255,255,.85);
+    font-size: 11px; font-weight:700;
+    padding: 4px 12px; border-radius: 20px;
+    border: 1px solid rgba(255,255,255,.2);
+    text-transform:uppercase; letter-spacing:.05em;
+}
+
+/* ═══════════════════════════════════════
+   DIAGNÓSTICO INSTANTÂNEO — 4 KPIs
+═══════════════════════════════════════ */
+.diag-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+}
+@media(max-width:1200px){ .diag-strip { grid-template-columns:1fr 1fr; } }
+
+.diag-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.diag-icon {
+    width:38px; height:38px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; flex-shrink:0;
+}
+.diag-label  { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:4px; }
+.diag-value  { font-size:28px; font-weight:700; color:var(--text-primary); line-height:1; font-variant-numeric:tabular-nums; }
+.diag-sub    { font-size:11px; color:var(--text-muted); margin-top:4px; }
+.diag-arrow  { font-size:14px; margin-left:4px; }
+.diag-alert  { color:#fff; background:var(--red); width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+
+/* ═══════════════════════════════════════
+   GRID PRINCIPAL — coluna direita maior
+═══════════════════════════════════════ */
+.pa-main-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;   /* era 340px */
+    gap: 14px;
+    margin-bottom: 14px;
+    align-items: start;
+}
+@media(max-width:1200px){ .pa-main-grid { grid-template-columns:1fr; } }
+
+.pa-bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 300px;
+    gap: 14px;
+}
+@media(max-width:1200px){ .pa-bottom-grid { grid-template-columns:1fr; } }
+
+/* ═══════════════════════════════════════
+   CARD BASE
+═══════════════════════════════════════ */
+.pa-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+.pa-card-hd {
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+}
+.pa-card-title {
+    font-size: 10.5px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.07em;
+    color:var(--text-secondary);
+    background: none !important;    /* evita highlight amarelo herdado */
+}
+.pa-card-subtitle { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+/* ═══════════════════════════════════════
+   RANKING COMPETITIVO — 3 colunas, badge wrap
+═══════════════════════════════════════ */
+.rank-table { width:100%; border-collapse:collapse; }
+.rank-table th {
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.04em; color:var(--text-muted);
+    padding:8px 10px; border-bottom:1px solid var(--border); text-align:left;
+}
+.rank-table th:not(:first-child) { text-align:center; }
+.rank-table td {
+    padding:7px 10px; border-bottom:1px solid #f0f2f8;
+    font-size:12.5px;
+}
+.rank-table tr:last-child td { border-bottom:none; }
+.rank-table td:not(:first-child) { text-align:center; font-variant-numeric:tabular-nums; }
+
+/* Badge de posição — sem overflow */
+.pos-leader      { background:#047857; color:#fff; font-weight:700; }
+.pos-competitive { background:#d97706; color:#fff; font-weight:700; }
+.pos-out         { background:#dc2626; color:#fff; font-weight:700; }
+.pos-badge {
+    font-size:10.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    display: inline-block;
+    line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════
+   SPREAD CARD
+═══════════════════════════════════════ */
+.spread-value {
+    font-size:40px; font-weight:700;
+    color:var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    line-height:1.1;
+}
+.spread-sub { font-size:11px; color:var(--text-muted); margin-top:6px; line-height:1.5; }
+
+/* ═══════════════════════════════════════
+   TABELA HISTÓRICO
+═══════════════════════════════════════ */
+.sortable { cursor:pointer; user-select:none; }
+.sortable:hover { color:var(--brand); }
+.sort-icon { font-size:10px; margin-left:3px; opacity:.5; }
+</style>
+{% endblock %}
+
+{% block body %}
+
+{% if not procedureId %}
+{# ── Estado vazio ── #}
+<div class="pa-card" style="text-align:center;padding:60px 20px">
+    <div style="font-size:44px;margin-bottom:16px"><i class="bi bi-search" style="color:var(--text-muted)"></i></div>
+    <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:8px">
+        Selecione um exame para começar
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);max-width:380px;margin:0 auto">
+        Use o filtro no topo da página para escolher um procedimento e visualizar
+        diagnóstico estratégico, distribuição de preços, ranking competitivo e histórico.
+    </p>
+</div>
+
+{% else %}
+
+{# ══ HEADER DO EXAME ═══════════════════════════════════════════════════════ #}
+<div class="exam-header">
+    <div class="exam-header-icon"><i class="bi bi-clipboard2-pulse-fill"></i></div>
+    <div>
+        <div class="exam-header-title">
+            {{ selectedProcedure.name ?? 'Exame' }}
+            {% set tussCode = selectedProcedure.tuss_code ?? selectedProcedure.tussCode ?? '' %}
+            {% if tussCode %}({{ tussCode }}){% endif %}
+        </div>
+        <div class="exam-header-sub">
+            {% if tussCode %}TUSS: {{ tussCode }}{% endif %}
+            {% if selectedProcedure.type ?? '' %}
+                {% if tussCode %} | {% endif %}Tipo: {{ selectedProcedure.type }}
+            {% endif %}
+            &nbsp;·&nbsp; Período: {{ filter.dateFrom|date('d/m/Y') }} → {{ filter.dateTo|date('d/m/Y') }}
+        </div>
+    </div>
+    <span class="exam-header-badge"><i class="bi bi-clock"></i> <span id="lastUpdated">–</span></span>
+</div>
+
+{# ══ DIAGNÓSTICO INSTANTÂNEO ═══════════════════════════════════════════════ #}
+<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-secondary);margin-bottom:8px;padding-left:2px">
+    Bloco de Diagnóstico Instantâneo
+</div>
+<div class="diag-strip">
+
+    <div class="diag-card">
+        <div class="diag-icon" style="background:#dbeafe;color:#2563eb"><i class="bi bi-graph-up-arrow"></i></div>
+        <div>
+            <div class="diag-label">Preço Médio Atual</div>
+            <div class="diag-value">
+                {% if diag.avg_today is defined and diag.avg_today %}
+                    R$ {{ diag.avg_today|number_format(2,',','.') }}
+                    <span class="diag-arrow" style="color:var(--red);font-size:16px">↗</span>
+                {% else %}—{% endif %}
+            </div>
+            <div class="diag-sub">Média do mercado hoje</div>
+        </div>
+    </div>
+
+    <div class="diag-card">
+        <div class="diag-icon" style="background:#fee2e2;color:#dc2626"><i class="bi bi-exclamation-circle-fill"></i></div>
+        <div style="flex:1">
+            <div class="diag-label">Dispersão %</div>
+            <div class="diag-value" style="color:var(--red)">
+                {% if diag.dispersion_pct is defined and diag.dispersion_pct %}{{ diag.dispersion_pct }}%{% else %}—{% endif %}
+            </div>
+            <div class="diag-sub">Amplitude (Max vs Min)</div>
+        </div>
+        {% if (diag.dispersion_pct ?? 0) > 100 %}<span class="diag-alert">!</span>{% endif %}
+    </div>
+
+    <div class="diag-card">
+        <div class="diag-icon" style="background:#d1fae5;color:#059669"><i class="bi bi-geo-alt-fill"></i></div>
+        <div>
+            <div class="diag-label">Número de Unidades Ativas</div>
+            <div class="diag-value">{{ diag.units_active|default(0) }}</div>
+            <div class="diag-sub">Unidades monitoradas</div>
+        </div>
+    </div>
+
+    <div class="diag-card">
+        <div class="diag-icon" style="background:#fef3c7;color:#d97706"><i class="bi bi-speedometer2"></i></div>
+        <div>
+            <div class="diag-label">Índice de Concentração</div>
+            <div class="diag-value" style="font-size:22px;margin-top:2px">
+                {{ diag.concentration_label ?? '—' }}
+                <span style="font-size:13px;font-weight:400;color:var(--text-muted)">
+                    (Desvio Padrão: {% if diag.std_dev is defined and diag.std_dev %}R$ {{ diag.std_dev|number_format(2,',','.') }}{% else %}—{% endif %})
+                </span>
+            </div>
+            <div class="diag-sub">Mercado
+                {% if (diag.concentration_label ?? '') == 'Baixo' %}concentrado
+                {% elseif (diag.concentration_label ?? '') == 'Médio' %}moderadamente disperso
+                {% else %}muito disperso{% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{# ══ HISTOGRAMA + RANKING ══════════════════════════════════════════════════ #}
+<div class="pa-main-grid">
+
+    <div class="pa-card">
+        <div class="pa-card-hd">
+            <div class="pa-card-title">Distribuição Visual de Preços (Histograma)</div>
+            <div class="pa-card-subtitle">Frequência de preços por faixa · hoje</div>
+        </div>
+        <div style="padding:16px 18px">
+            {% if histogram is empty %}
+            <div style="text-align:center;color:var(--text-muted);padding:30px">
+                <i class="bi bi-bar-chart" style="font-size:28px"></i>
+                <p>Sem dados hoje para este exame.</p>
+            </div>
+            {% else %}
+            <div style="height:280px"><canvas id="histoChart"></canvas></div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Ranking — 3 colunas: Unidade | Preço + dist | Posição #}
+    <div class="pa-card">
+        <div class="pa-card-hd">
+            <div class="pa-card-title">Ranking Competitivo do Exame</div>
+            <div class="pa-card-subtitle">Ordenado pelo menor preço hoje</div>
+        </div>
+        {% if competitiveRanking is empty %}
+        <div style="padding:30px;text-align:center;color:var(--text-muted);font-size:12px">Sem dados hoje.</div>
+        {% else %}
+        <div style="max-height:400px;overflow-y:auto">
+            <table class="rank-table">
+                <thead>
+                    <tr>
+                        <th>Unidade</th>
+                        <th>Preço</th>
+                        <th>Posição</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for u in competitiveRanking %}
+                <tr>
+                    <td style="font-weight:500;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                        title="{{ u.unit_name }}">
+                        {{ u.unit_name|slice(0,24) }}{% if u.unit_name|length > 24 %}…{% endif %}
+                    </td>
+                    <td>
+                        <div class="mono" style="font-weight:700">R$ {{ u.price|number_format(2,',','.') }}</div>
+                        <div style="font-size:10px;color:{{ u.dist_pct == 0 ? 'var(--green)' : (u.dist_pct <= 100 ? 'var(--amber)' : 'var(--red)') }}">
+                            {% if u.dist_pct == 0 %}mínimo{% else %}+{{ u.dist_pct }}% do mín.{% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="pos-badge {{ u.position_class }}">{{ u.position_label }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+{# ══ MAPA + EVOLUÇÃO + SPREAD ══════════════════════════════════════════════ #}
+<div class="pa-bottom-grid" style="margin-bottom:14px">
+
+    <div class="pa-card">
+        <div class="pa-card-hd">
+            <div class="pa-card-title">Mapa de Posicionamento</div>
+            <div class="pa-card-subtitle">
+                <span style="color:var(--green);font-weight:600">● Verde</span>: Preço Baixo &nbsp;
+                <span style="color:var(--amber);font-weight:600">● Amarelo</span>: Médio &nbsp;
+                <span style="color:var(--red);font-weight:600">● Vermelho</span>: Alto
+            </div>
+        </div>
+        <div style="padding:14px 16px">
+            {% if competitiveRanking is empty %}
+            <div style="text-align:center;color:var(--text-muted);padding:30px">Sem dados hoje.</div>
+            {% else %}
+            <div style="height:240px"><canvas id="bubbleChart"></canvas></div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:8px;text-align:center">
+                Eixo X = distância % do mínimo · Eixo Y = preço médio · Tamanho = nº de snapshots
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="pa-card">
+        <div class="pa-card-hd">
+            <div class="pa-card-title">Evolução do Preço Médio (7 dias)</div>
+            <div class="pa-card-subtitle">Preço Médio (R$) por dia</div>
+        </div>
+        <div style="padding:14px 16px">
+            <div style="height:240px"><canvas id="trendWeekChart"></canvas></div>
+        </div>
+    </div>
+
+    <div class="pa-card">
+        <div class="pa-card-hd">
+            <div class="pa-card-title">Spread de Mercado</div>
+        </div>
+        <div style="padding:22px 20px">
+            <div class="spread-value">
+                {% if spreadValue is not null %}R$ {{ spreadValue|number_format(2,',','.') }}{% else %}—{% endif %}
+            </div>
+            <div class="spread-sub">
+                {% if diag.max_today is defined and diag.min_today is defined %}
+                    Máx (R$ {{ diag.max_today|number_format(2,',','.') }}) −
+                    Mín (R$ {{ diag.min_today|number_format(2,',','.') }})
+                    | Oportunidade de Mercado
+                {% endif %}
+            </div>
+
+            {% if diag.dispersion_pct is defined and diag.dispersion_pct %}
+            <div style="margin-top:20px">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:6px">Nível de Dispersão</div>
+                {% set dp = diag.dispersion_pct %}
+                {% set dispW = dp > 300 ? 100 : (dp / 300 * 100)|round %}
+                <div style="background:var(--surface-2);border-radius:6px;height:10px;overflow:hidden">
+                    <div style="height:100%;border-radius:6px;width:{{ dispW }}%;background:{{ dp > 200 ? 'var(--red)' : (dp > 80 ? 'var(--amber)' : 'var(--green)') }};transition:width .4s ease"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:3px">
+                    <span>0%</span><span>100%</span><span>200%</span><span>300%+</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div style="background:var(--green-bg);border-radius:var(--radius);padding:10px 12px;text-align:center">
+                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--green);margin-bottom:3px">Mínimo</div>
+                    <div style="font-size:16px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">
+                        {% if diag.min_today is defined %}R$ {{ diag.min_today|number_format(2,',','.') }}{% else %}—{% endif %}
+                    </div>
+                </div>
+                <div style="background:var(--red-bg);border-radius:var(--radius);padding:10px 12px;text-align:center">
+                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;color:var(--red);margin-bottom:3px">Máximo</div>
+                    <div style="font-size:16px;font-weight:700;color:var(--red);font-variant-numeric:tabular-nums">
+                        {% if diag.max_today is defined %}R$ {{ diag.max_today|number_format(2,',','.') }}{% else %}—{% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{# ══ HISTÓRICO DIÁRIO ══════════════════════════════════════════════════════ #}
+<div class="pa-card">
+    <div class="pa-card-hd" style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+            <div class="pa-card-title">Histórico Diário Completo</div>
+            <div class="pa-card-subtitle">{{ tableRows|length }} registros · {{ filter.dateFrom|date('d/m/Y') }} → {{ filter.dateTo|date('d/m/Y') }}</div>
+        </div>
+        <button class="btn-csv" onclick="exportTableToCSV('procTable','exame-historico.csv')">
+            <i class="bi bi-download"></i> CSV
+        </button>
+    </div>
+    <div style="overflow-x:auto">
+        <table class="data-table" id="procTable">
+            <thead>
+                <tr>
+                    <th class="sortable" data-col="0">Data <i class="sort-icon bi bi-chevron-expand"></i></th>
+                    <th class="sortable" data-col="1">Preço Médio <i class="sort-icon bi bi-chevron-expand"></i></th>
+                    <th class="sortable" data-col="2">Mínimo <i class="sort-icon bi bi-chevron-expand"></i></th>
+                    <th class="sortable" data-col="3">Máximo <i class="sort-icon bi bi-chevron-expand"></i></th>
+                    <th>Spread</th>
+                    <th>Unidades</th>
+                    <th>Var. Dia</th>
+                </tr>
+            </thead>
+            <tbody id="procTableBody">
+            {% for i, row in tableRows %}
+                <tr>
+                    <td class="mono">{{ row.collected_date|date('d/m/Y') }}</td>
+                    <td class="mono" style="font-weight:600">R$ {{ row.avg_price|number_format(2,',','.') }}</td>
+                    <td class="mono" style="color:var(--green)">R$ {{ row.min_price|number_format(2,',','.') }}</td>
+                    <td class="mono" style="color:var(--red)">R$ {{ row.max_price|number_format(2,',','.') }}</td>
+                    <td>
+                        {% set spread = row.max_price - row.min_price %}
+                        <span class="badge {{ spread > 50 ? 'badge-red' : (spread > 20 ? 'badge-amber' : 'badge-green') }}">
+                            R$ {{ spread|number_format(2,',','.') }}
+                        </span>
+                    </td>
+                    <td class="muted">{{ row.total_units }}</td>
+                    <td class="mono">
+                        {% if i > 0 and tableRows[i-1].avg_price is defined %}
+                            {% set prev = tableRows[i-1].avg_price %}
+                            {% set pct  = ((row.avg_price - prev) / prev * 100)|round(2) %}
+                            {% if pct > 0 %}<span style="color:var(--red)"><i class="bi bi-arrow-up-short"></i>{{ pct }}%</span>
+                            {% elseif pct < 0 %}<span style="color:var(--green)"><i class="bi bi-arrow-down-short"></i>{{ pct|abs }}%</span>
+                            {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
+                        {% else %}<span style="color:var(--text-muted)">—</span>{% endif %}
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted)">Nenhum dado encontrado para este período.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endif %}{# /procedureId #}
+{% endblock %}
+
+{% block extra_js %}
+{% if procedureId %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size   = 11;
+Chart.defaults.color       = '#9399ad';
+
+const fmtD = d => { if(!d) return ''; const p=d.split('-'); return p[2]+'/'+p[1]; };
+const fmtR = v => 'R$ ' + (+v).toFixed(2).replace('.',',');
+
+// ── Histograma ───────────────────────────────────────────────────────────────
+{% if histogram is not empty %}
+const histLabels = [{% for h in histogram %}'R$ {{ h.faixa_inicio|number_format(0,'.','.') }}-{{ h.faixa_fim|number_format(0,'.','.') }}'{% if not loop.last %},{% endif %}{% endfor %}];
+const histData   = [{% for h in histogram %}{{ h.qty }}{% if not loop.last %},{% endif %}{% endfor %}];
+const histMax    = Math.max(...histData);
+
+new Chart(document.getElementById('histoChart'), {
+    type: 'bar',
+    data: {
+        labels: histLabels,
+        datasets: [{
+            label: 'Qtd de Unidades',
+            data: histData,
+            backgroundColor: histData.map(v => `rgba(37,99,235,${0.35 + (v/histMax)*0.55})`),
+            borderRadius: 5,
+            borderSkipped: false,
+        }],
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor:'#1a1d2e', titleColor:'#e2e8f0', bodyColor:'#9399ad',
+                borderColor:'#2d3251', borderWidth:1, padding:10,
+                callbacks: { title: i => i[0].label, label: c => ` ${c.parsed.y} unidades` },
+            },
+        },
+        scales: {
+            x: { grid:{display:false}, ticks:{color:'#9399ad'}, title:{display:true,text:'Faixa de Preço (R$)',color:'#9399ad',font:{size:10}} },
+            y: { grid:{color:'#f0f2f8'}, ticks:{color:'#9399ad',stepSize:1}, title:{display:true,text:'Quantidade de Unidades',color:'#9399ad',font:{size:10}} },
+        },
+    },
+    plugins: [{
+        id: 'barLabels',
+        afterDatasetsDraw(chart) {
+            const ctx = chart.ctx;
+            chart.data.datasets.forEach((ds, i) => {
+                chart.getDatasetMeta(i).data.forEach((bar, idx) => {
+                    const val = ds.data[idx];
+                    if (!val) return;
+                    ctx.save();
+                    ctx.fillStyle = '#5a6072';
+                    ctx.font = 'bold 11px DM Sans, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(val, bar.x, bar.y - 6);
+                    ctx.restore();
+                });
+            });
+        },
+    }],
+});
+{% endif %}
+
+// ── Bubble chart ─────────────────────────────────────────────────────────────
+{% if competitiveRanking is not empty %}
+const bubbleRaw = {{ positioningData|raw }};
+new Chart(document.getElementById('bubbleChart').getContext('2d'), {
+    type: 'bubble',
+    data: {
+        datasets: bubbleRaw.map(p => ({
+            label: p.label,
+            data: [{ x: p.x, y: p.y, r: p.r }],
+            backgroundColor: p.color + 'bb',
+            borderColor: p.color,
+            borderWidth: 1.5,
+        })),
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor:'#1a1d2e', titleColor:'#e2e8f0', bodyColor:'#9399ad',
+                borderColor:'#2d3251', borderWidth:1, padding:10,
+                callbacks: {
+                    title: i => i[0].dataset.label,
+                    label: c => [` Preço: ${fmtR(c.parsed.y)}`, ` Dist. mínimo: +${c.parsed.x}%`],
+                },
+            },
+        },
+        scales: {
+            x: { grid:{color:'#f0f2f8'}, ticks:{color:'#9399ad',callback:v=>'+'+v+'%'}, title:{display:true,text:'Distância do mínimo (%)',color:'#9399ad',font:{size:10}} },
+            y: { grid:{color:'#f0f2f8'}, ticks:{color:'#9399ad',callback:v=>fmtR(v)}, title:{display:true,text:'Preço Médio (R$)',color:'#9399ad',font:{size:10}} },
+        },
+    },
+});
+{% endif %}
+
+// ── Evolução 7 dias — sem corte no eixo X ────────────────────────────────────
+{% if trendWeek is not empty %}
+const tw7Labels = {{ trendWeek.labels|raw }};
+const tw7Values = {{ trendWeek.values|raw }};
+
+const tw7Ctx  = document.getElementById('trendWeekChart').getContext('2d');
+const tw7Grad = tw7Ctx.createLinearGradient(0,0,0,240);
+tw7Grad.addColorStop(0,'rgba(37,99,235,.12)');
+tw7Grad.addColorStop(1,'rgba(37,99,235,0)');
+
+new Chart(tw7Ctx, {
+    type: 'line',
+    data: {
+        labels: tw7Labels.map(fmtD),
+        datasets: [{
+            label: 'Preço Médio',
+            data: tw7Values,
+            borderColor: '#2563eb',
+            backgroundColor: tw7Grad,
+            borderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#2563eb',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            tension: 0.3,
+            fill: true,
+        }],
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { right: 14 } },   /* evita corte do último ponto */
+        plugins: {
+            legend: { display:false },
+            tooltip: {
+                backgroundColor:'#1a1d2e', titleColor:'#e2e8f0', bodyColor:'#9399ad',
+                borderColor:'#2d3251', borderWidth:1, padding:10,
+                callbacks: { label: c => ' ' + fmtR(c.parsed.y) },
+            },
+        },
+        scales: {
+            x: {
+                grid: { display:false },
+                ticks: { color:'#9399ad', maxRotation:0, autoSkip:false },
+                bounds: 'data',
+                title: { display:true, text:'Data', color:'#9399ad', font:{size:10} },
+            },
+            y: {
+                grid: { color:'#f0f2f8' },
+                ticks: { color:'#9399ad', callback: v => fmtR(v) },
+                title: { display:true, text:'Preço Médio (R$)', color:'#9399ad', font:{size:10} },
+            },
+        },
+    },
+});
+{% endif %}
+
+// ── Sortable table ────────────────────────────────────────────────────────────
+document.querySelectorAll('.sortable').forEach(th => {
+    th.addEventListener('click', () => {
+        const col   = +th.dataset.col;
+        const tbody = document.getElementById('procTableBody');
+        const rows  = [...tbody.querySelectorAll('tr')];
+        const asc   = th.dataset.asc !== 'true';
+        th.dataset.asc = asc;
+        rows.sort((a, b) => {
+            const av = a.cells[col]?.innerText.replace(/[^0-9.,\-]/g,'').replace(',','.') || '0';
+            const bv = b.cells[col]?.innerText.replace(/[^0-9.,\-]/g,'').replace(',','.') || '0';
+            return asc ? +av - +bv : +bv - +av;
+        });
+        rows.forEach(r => tbody.appendChild(r));
+        document.querySelectorAll('.sort-icon').forEach(i => i.className = 'sort-icon bi bi-chevron-expand');
+        th.querySelector('.sort-icon').className = `sort-icon bi bi-chevron-${asc?'up':'down'}`;
+    });
+});
+
+// ── Timestamp ─────────────────────────────────────────────────────────────────
+const now = new Date();
+document.getElementById('lastUpdated').textContent =
+    now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+
+// ── Auto-refresh ──────────────────────────────────────────────────────────────
+async function refreshData() {
+    try {
+        const url  = `{{ path("procedure_analysis_data") }}?procedure_id={{ procedureId }}&date_from={{ filter.dateFrom }}&date_to={{ filter.dateTo }}`;
+        const data = await (await fetch(url)).json();
+        if (data.updated_at) document.getElementById('lastUpdated').textContent = data.updated_at;
+    } catch(e) { console.error(e); }
+}
+AutoRefresh.start(60, refreshData);
+</script>
+{% endif %}
+{% endblock %}

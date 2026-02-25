@@ -1,0 +1,315 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Qualidade & Logs{% endblock %}
+{% block page_title %}Qualidade de Dados & Logs{% endblock %}
+{% block page_subtitle %}Auditoria e monitoramento das coletas de mercado{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn-csv" onclick="exportTableToCSV('logsTable','collection-logs.csv')">
+    <i class="bi bi-download"></i> Exportar CSV
+</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+    .status-tile { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px 20px; box-shadow:var(--shadow); display:flex; align-items:center; gap:14px; }
+    .status-tile-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+    .status-tile-body .value { font-size:26px; font-weight:700; letter-spacing:-.5px; }
+    .status-tile-body .label { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; margin-top:2px; }
+    .quality-layout { display:grid; grid-template-columns:2fr 1fr; gap:14px; margin-bottom:20px; }
+    @media (max-width:1100px) { .quality-layout { grid-template-columns:1fr; } .status-grid { grid-template-columns:1fr 1fr; } }
+    .log-filter-row { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 18px; margin-bottom:16px; box-shadow:var(--shadow); display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+    .pulse { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+    .pulse.success { background:var(--green); box-shadow:0 0 0 2px var(--green-bg); }
+    .pulse.partial  { background:var(--amber); box-shadow:0 0 0 2px var(--amber-bg); }
+    .pulse.failed   { background:var(--red);   box-shadow:0 0 0 2px var(--red-bg); }
+    #lastUpdated3 { font-size:11px; color:var(--text-muted); font-family:'DM Mono',monospace; }
+    .error-cell { max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:var(--red); cursor:pointer; }
+    .error-cell:hover { white-space:normal; overflow:visible; }
+</style>
+{% endblock %}
+
+{% block body %}
+
+{# ════════════════════════════════════════════
+   STATUS TILES
+════════════════════════════════════════════ #}
+<div class="status-grid">
+
+    <div class="status-tile">
+        <div class="status-tile-icon" style="background:var(--green-bg);color:var(--green)">
+            <i class="bi bi-check-circle-fill"></i>
+        </div>
+        <div class="status-tile-body">
+            <div class="value" style="color:var(--green)">{{ statusMap.success ?? 0 }}</div>
+            <div class="label">Coletas bem-sucedidas</div>
+        </div>
+    </div>
+
+    <div class="status-tile">
+        <div class="status-tile-icon" style="background:var(--amber-bg);color:var(--amber)">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <div class="status-tile-body">
+            <div class="value" style="color:var(--amber)">{{ statusMap.partial ?? 0 }}</div>
+            <div class="label">Coletas parciais</div>
+        </div>
+    </div>
+
+    <div class="status-tile">
+        <div class="status-tile-icon" style="background:var(--red-bg);color:var(--red)">
+            <i class="bi bi-x-circle-fill"></i>
+        </div>
+        <div class="status-tile-body">
+            <div class="value" style="color:var(--red)">{{ statusMap.failed ?? 0 }}</div>
+            <div class="label">Falhas de coleta</div>
+        </div>
+    </div>
+
+</div>
+
+{# ════════════════════════════════════════════
+   GRÁFICOS
+════════════════════════════════════════════ #}
+<div class="quality-layout">
+
+    {# ── Cobertura de procedures por dia ── #}
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Cobertura de Procedimentos por Dia</div>
+                <div class="card-subtitle">Nº de exames coletados · <span id="lastUpdated3">–</span></div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="chart-wrap" style="height:240px">
+                <canvas id="coverageChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    {# ── Pizza de status ── #}
+    <div class="card">
+        <div class="card-header">
+            <div><div class="card-title">Status das Coletas</div><div class="card-subtitle">Distribuição geral</div></div>
+        </div>
+        <div class="card-body">
+            <div class="chart-wrap-sm" style="height:240px">
+                <canvas id="statusPieChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{# ════════════════════════════════════════════
+   FILTROS DE LOG
+════════════════════════════════════════════ #}
+<form method="GET" action="{{ path('data_quality_index') }}" class="log-filter-row">
+    <div class="filter-group">
+        <label class="filter-label">De</label>
+        <input type="date" name="date_from" class="filter-input" value="{{ dateFrom }}">
+    </div>
+    <div class="filter-group">
+        <label class="filter-label">Até</label>
+        <input type="date" name="date_to" class="filter-input" value="{{ dateTo }}">
+    </div>
+    <div class="filter-group">
+        <label class="filter-label">Status</label>
+        <select name="status" class="filter-select select2-single" style="min-width:140px">
+            <option value="">Todos os status</option>
+            <option value="success" {{ statusFilter == 'success' ? 'selected' }}>✅ Sucesso</option>
+            <option value="partial" {{ statusFilter == 'partial' ? 'selected' }}>⚠️ Parcial</option>
+            <option value="failed"  {{ statusFilter == 'failed'  ? 'selected' }}>❌ Falha</option>
+        </select>
+    </div>
+    <div class="filter-group" style="flex:0">
+        <label class="filter-label">&nbsp;</label>
+        <div style="display:flex;gap:6px">
+            <button type="submit" class="btn-filter btn-primary-filter"><i class="bi bi-funnel-fill"></i> Filtrar</button>
+            <a href="{{ path('data_quality_index') }}" class="btn-filter btn-reset-filter"><i class="bi bi-x"></i></a>
+        </div>
+    </div>
+</form>
+
+{# ════════════════════════════════════════════
+   TABELA DE LOGS
+════════════════════════════════════════════ #}
+<div class="card">
+    <div class="card-header" style="padding-bottom:14px">
+        <div>
+            <div class="card-title">Histórico de Coletas</div>
+            <div class="card-subtitle">{{ logs|length }} registros · {{ dateFrom|date('d/m/Y') }} – {{ dateTo|date('d/m/Y') }}</div>
+        </div>
+        <button class="btn-csv" onclick="exportTableToCSV('logsTable','collection-logs.csv')"><i class="bi bi-download"></i> CSV</button>
+    </div>
+
+    {% if logs is empty %}
+    <div class="empty-state"><i class="bi bi-journal-x"></i><p>Nenhum log encontrado para os filtros selecionados.</p></div>
+    {% else %}
+    <div style="overflow-x:auto">
+        <table class="data-table" id="logsTable">
+            <thead>
+                <tr>
+                    <th>Procedimento (TUSS)</th>
+                    <th>Status</th>
+                    <th>Unidades</th>
+                    <th>Snapshots</th>
+                    <th>Duração</th>
+                    <th>Executado em</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for log in logs %}
+                <tr>
+                    <td class="mono" style="font-weight:600">
+                        {{ log.procedureTuss ?? log.procedure_tuss ?? '—' }}
+                    </td>
+                    <td>
+                        {% set s = log.status ?? '' %}
+                        {% if s == 'success' %}
+                            <span class="pulse success"></span>
+                            <span class="badge badge-green">Sucesso</span>
+                        {% elseif s == 'partial' %}
+                            <span class="pulse partial"></span>
+                            <span class="badge badge-amber">Parcial</span>
+                        {% elseif s %}
+                            <span class="pulse failed"></span>
+                            <span class="badge badge-red">{{ s }}</span>
+                        {% else %}
+                            <span class="badge badge-gray">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="mono">
+                        {{ log.totalUnits ?? log.total_units ?? '—' }}
+                    </td>
+                    <td class="mono">
+                        {% set snaps = log.totalSnapshots ?? log.total_snapshots ?? null %}
+                        {% if snaps is not null %}
+                            <span style="font-weight:600;color:var(--brand)">{{ snaps }}</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="mono muted">
+                        {% set ms = log.executionTimeMs ?? log.execution_time_ms ?? null %}
+                        {% if ms is not null %}
+                            {{ (ms / 1000)|number_format(1) }}s
+                            <span style="font-size:10px;color:var(--text-muted)">({{ ms }}ms)</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="mono muted">
+                        {% set ca = log.createdAt ?? log.created_at ?? null %}
+                        {{ ca ? ca|date('d/m/Y H:i') : '—' }}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size   = 12;
+Chart.defaults.color       = '#9399ad';
+
+const fmtDate = d => { if(!d) return ''; const [y,m,day]=d.split('-'); return `${day}/${m}`; };
+
+// ── Gráfico de cobertura (barras duplas: procedures + units) ──────────────────
+const covLabels = {{ coverageLabels|raw }};
+const covCounts = {{ coverageCounts|raw }};
+const covUnits  = {{ coverageUnits|raw }};
+
+const covChart = new Chart(document.getElementById('coverageChart'), {
+    type: 'bar',
+    data: {
+        labels: covLabels.map(fmtDate),
+        datasets: [
+            {
+                label: 'Procedimentos',
+                data: covCounts,
+                backgroundColor: 'rgba(37,99,235,.75)',
+                borderRadius: 4,
+                borderSkipped: false,
+                yAxisID: 'y',
+            },
+            {
+                label: 'Unidades',
+                data: covUnits,
+                backgroundColor: 'rgba(5,150,105,.6)',
+                borderRadius: 4,
+                borderSkipped: false,
+                yAxisID: 'y2',
+            },
+        ],
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: { position:'bottom', labels: { color:'#5a6072', font:{size:11}, padding:10, boxWidth:10, usePointStyle:true } },
+            tooltip: {
+                backgroundColor: '#1a1d2e', titleColor: '#e2e8f0', bodyColor: '#9399ad',
+                borderColor: '#2d3251', borderWidth: 1, padding: 12,
+            },
+        },
+        scales: {
+            x:  { grid: { display: false }, ticks: { maxTicksLimit: 14, color: '#9399ad' } },
+            y:  { grid: { color: '#f0f2f8' }, ticks: { color: '#9399ad' }, title: { display:true, text:'Procedures', color:'#9399ad', font:{size:10} } },
+            y2: { position: 'right', grid: { display: false }, ticks: { color: '#9399ad' }, title: { display:true, text:'Unidades', color:'#9399ad', font:{size:10} } },
+        },
+    },
+});
+
+// ── Pizza de status ───────────────────────────────────────────────────────────
+const successCount = {{ statusMap.success ?? 0 }};
+const partialCount = {{ statusMap.partial ?? 0 }};
+const failedCount  = {{ statusMap.failed  ?? 0 }};
+const totalLogs    = successCount + partialCount + failedCount;
+
+if (totalLogs > 0) {
+    new Chart(document.getElementById('statusPieChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Sucesso', 'Parcial', 'Falha'],
+            datasets: [{
+                data: [successCount, partialCount, failedCount],
+                backgroundColor: ['rgba(5,150,105,.85)', 'rgba(217,119,6,.85)', 'rgba(220,38,38,.85)'],
+                borderColor: '#ffffff',
+                borderWidth: 3,
+                hoverOffset: 6,
+            }],
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            cutout: '60%',
+            plugins: {
+                legend: { position:'bottom', labels: { color:'#5a6072', font:{size:11}, padding:10, boxWidth:10, usePointStyle:true } },
+                tooltip: {
+                    backgroundColor: '#1a1d2e', titleColor: '#e2e8f0', bodyColor: '#9399ad',
+                    callbacks: { label: c => ` ${c.label}: ${c.parsed} (${(c.parsed/totalLogs*100).toFixed(1)}%)` },
+                },
+            },
+        },
+    });
+}
+
+// ── AJAX refresh ──────────────────────────────────────────────────────────────
+const dataUrl = '{{ path("data_quality_data") }}';
+const qs      = window.location.search;
+
+async function refreshData() {
+    try {
+        const data = await (await fetch(dataUrl + qs)).json();
+        if (data.updated_at) document.getElementById('lastUpdated3').textContent = 'Atualizado às ' + data.updated_at;
+    } catch(e) { console.error(e); }
+}
+
+AutoRefresh.start(30, refreshData); // logs atualizam a cada 30s
+</script>
+{% endblock %}

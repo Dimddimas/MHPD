@@ -1,0 +1,727 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Simulação de Preços{% endblock %}
+{% block page_title %}Simulação Estratégica de Preços{% endblock %}
+{% block page_subtitle %}Simule novos preços e veja o impacto competitivo em tempo real{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ═══════════════════════════════════════
+   BASE
+═══════════════════════════════════════ */
+.sim-wrap { display:flex; flex-direction:column; gap:14px; }
+
+/* ═══════════════════════════════════════
+   SELETOR
+═══════════════════════════════════════ */
+.sim-selector {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    box-shadow: var(--shadow);
+    display: flex; gap:12px; align-items:flex-end; flex-wrap:wrap;
+}
+
+/* ═══════════════════════════════════════
+   LAYOUT PRINCIPAL — 3 colunas
+═══════════════════════════════════════ */
+.sim-main {
+    display: grid;
+    grid-template-columns: 300px 1fr 280px;
+    gap: 14px;
+    align-items: start;
+}
+@media(max-width:1300px){ .sim-main { grid-template-columns: 280px 1fr; } }
+@media(max-width:900px)  { .sim-main { grid-template-columns: 1fr; } }
+
+/* ═══════════════════════════════════════
+   CARD BASE
+═══════════════════════════════════════ */
+.sim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+.sim-card-hd {
+    padding: 10px 16px 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items:center; gap:8px;
+}
+.sim-card-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--brand); color: #fff;
+    font-size: 11px; font-weight: 700;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+}
+.sim-card-title {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--text-secondary);
+}
+.sim-sec-label {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: var(--text-secondary);
+    margin-bottom: 8px; padding-left: 2px;
+}
+
+/* ═══════════════════════════════════════
+   BLOCO 1 — PAINEL DE CONTROLE
+═══════════════════════════════════════ */
+.panel-left { display:flex; flex-direction:column; gap:12px; }
+
+/* Info header do exame */
+.exam-info-box {
+    background: linear-gradient(135deg, #eef2ff 0%, #e0f2fe 100%);
+    border: 1px solid #c7d2fe;
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-size: 12px;
+}
+.exam-info-row { display:flex; gap:12px; flex-wrap:wrap; margin-top:4px; }
+.exam-info-row span { color: var(--text-muted); font-size:11px; }
+.exam-info-row strong { color: var(--text-primary); font-size:11px; }
+
+/* Preço atual */
+.current-price-box {
+    background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+    border: 1px solid #93c5fd;
+    border-radius: var(--radius);
+    padding: 14px;
+    text-align: center;
+}
+.current-price-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing:.08em; color: #1d4ed8; margin-bottom: 6px;
+}
+.current-price-val {
+    font-size: 36px; font-weight: 700; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; line-height: 1;
+}
+.current-price-arrow { color: var(--red); font-size: 26px; margin-left: 6px; }
+
+/* Slider */
+.slider-box {
+    background: #1e3a6e;
+    border-radius: var(--radius);
+    padding: 14px 16px;
+}
+.slider-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing:.08em; color: rgba(255,255,255,.7); margin-bottom:8px;
+}
+.slider-simval {
+    font-size: 22px; font-weight: 700; color: #fff;
+    font-variant-numeric: tabular-nums; margin-bottom:10px;
+}
+.sim-slider {
+    -webkit-appearance: none;
+    width: 100%; height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #60a5fa 0%, #60a5fa var(--pct,50%), rgba(255,255,255,.25) var(--pct,50%), rgba(255,255,255,.25) 100%);
+    outline: none; cursor: pointer;
+}
+.sim-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    cursor: pointer;
+    transition: transform .1s;
+}
+.sim-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.slider-range-labels {
+    display:flex; justify-content:space-between;
+    font-size: 10px; color: rgba(255,255,255,.5); margin-top:6px;
+}
+
+/* Bloco 4 — Matriz (inside left panel) */
+.matrix-box {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.qgrid-sim {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 2px;
+    background: var(--border);
+    height: 170px;
+}
+.q-sim {
+    padding: 8px 10px;
+    display: flex; flex-direction:column;
+    justify-content: flex-start;
+    position: relative;
+}
+.q-sim-title { font-size: 11px; font-weight: 700; }
+.q-sim-sub   { font-size: 9px; opacity:.7; margin-top:2px; }
+.q1s { background: #d1fae5; color:#065f46; }
+.q2s { background: #dbeafe; color:#1e3a8a; }
+.q3s { background: #fef3c7; color:#78350f; }
+.q4s { background: #f1f5f9; color:#475569; }
+.q-dot {
+    position:absolute; bottom:8px; right:8px;
+    width:12px; height:12px; border-radius:50%;
+    background:rgba(0,0,0,.12);
+    transition: all .4s ease;
+}
+.q-dot.active {
+    width:14px; height:14px;
+    background:#2563eb;
+    box-shadow:0 0 0 3px rgba(37,99,235,.25);
+}
+.q-axis-y {
+    writing-mode:vertical-lr; transform:rotate(180deg);
+    font-size:9px; color:var(--text-muted); text-align:center;
+    padding:6px 3px;
+    background:var(--surface-2);
+    border-right:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+}
+.q-axis-x {
+    font-size:9px; color:var(--text-muted); text-align:center;
+    padding:4px 6px;
+    background:var(--surface-2);
+    border-top:1px solid var(--border);
+    grid-column:1/-1;
+}
+.matrix-outer {
+    display:grid;
+    grid-template-columns:28px 1fr;
+    border-radius:var(--radius);
+    overflow:hidden;
+    border:1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════
+   BLOCO 2 — IMPACTO COMPETITIVO (centro)
+═══════════════════════════════════════ */
+.impact-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+}
+.ikpi {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    text-align: center;
+}
+.ikpi-label {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing:.06em; color:var(--text-muted); margin-bottom:6px;
+    line-height:1.3;
+}
+.ikpi-val {
+    font-size: 26px; font-weight: 700; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; line-height:1;
+}
+.ikpi-sub {
+    font-size: 10px; color: var(--text-muted); margin-top:4px;
+}
+
+/* ═══════════════════════════════════════
+   BLOCO 3 — IMPACTO FINANCEIRO
+═══════════════════════════════════════ */
+.fin-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+}
+.fin-card:last-child { margin-bottom:0; }
+.fin-card-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing:.07em; color: var(--text-muted); margin-bottom:4px;
+    text-align:center;
+}
+.fin-card-sub  { font-size: 10px; color:var(--text-muted); text-align:center; margin-bottom:8px; }
+.fin-card-diff { font-size:12px; color:var(--text-muted); text-align:center; margin-bottom:4px; }
+.fin-card-val  {
+    font-size: 28px; font-weight: 700;
+    font-variant-numeric: tabular-nums; text-align:center;
+    line-height: 1.1;
+}
+.fin-card-val.neg { color: var(--red); }
+.fin-card-val.pos { color: var(--green); }
+.fin-card-val.neu { color: var(--text-primary); }
+
+/* Zona de Competitividade */
+.zone-strip {
+    display: grid; grid-template-columns: repeat(4,1fr); gap:3px;
+    margin-bottom:8px;
+}
+.zone-pill {
+    padding: 4px 2px; border-radius: 5px;
+    text-align:center; font-size: 10px; font-weight: 700;
+    cursor:default; transition: transform .15s;
+}
+.zone-pill.active { transform:scale(1.05); box-shadow:0 2px 6px rgba(0,0,0,.15); }
+.zg { background:#d1fae5; color:#065f46; }
+.zy { background:#fef9c3; color:#854d0e; }
+.zo { background:#ffedd5; color:#9a3412; }
+.zr { background:#fee2e2; color:#991b1b; }
+.zone-arrow {
+    text-align:center; font-size:11px; color:var(--text-muted);
+    margin-top:4px;
+}
+.zone-label-big { text-align:center; font-size:12px; font-weight:700; margin-top:6px; }
+
+/* ═══════════════════════════════════════
+   BLOCO 5 — PROJEÇÃO DE ARBITRAGEM
+═══════════════════════════════════════ */
+.arbitrage-box {
+    background: linear-gradient(135deg, #f0fdf4 0%, #f0f9ff 100%);
+    border: 1px solid #86efac;
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    text-align: center;
+}
+.arb-text {
+    font-size: 17px; color: var(--text-primary); line-height: 1.7;
+}
+.arb-text strong { color: var(--brand); }
+.arb-text .hi-price { color: var(--brand); font-weight: 700; }
+.arb-text .hi-green { color: var(--green); font-weight: 700; }
+.arb-text .hi-red   { color: var(--red);   font-weight: 700; }
+
+/* Loading state */
+.sim-loading {
+    opacity: .4;
+    pointer-events: none;
+    transition: opacity .2s;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="sim-wrap">
+
+{# ─── SELETOR ─── #}
+<form method="GET" action="{{ path('price_simulation_index') }}" class="sim-selector" id="simForm">
+    <div class="filter-group" style="flex:2;min-width:200px">
+        <label class="filter-label">Procedimento / Exame</label>
+        <select name="procedure_id" class="filter-select select2-single" style="width:100%"
+                        data-search-url="{{ path('search_procedures') }}">
+            <option value="">-- Selecione um exame --</option>
+
+        </select>
+    </div>
+    <div class="filter-group" style="flex:2;min-width:180px">
+        <label class="filter-label">Unidade (sua unidade)</label>
+        <select name="unit_id" class="filter-select select2-single" style="width:100%"
+                        data-search-url="{{ path('search_units') }}">
+            <option value="">-- Selecione a unidade --</option>
+
+        </select>
+    </div>
+    <div class="filter-group" style="flex:0">
+        <label class="filter-label">&nbsp;</label>
+        <button type="submit" class="btn-filter btn-primary-filter">
+            <i class="bi bi-play-circle-fill"></i> Simular
+        </button>
+    </div>
+</form>
+
+{% if not unitId or not procedureId %}
+{# ─── Estado vazio ─── #}
+<div class="sim-card" style="text-align:center;padding:60px 20px">
+    <div style="font-size:44px;margin-bottom:16px">🎯</div>
+    <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:8px">
+        Selecione um exame e uma unidade para simular
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);max-width:420px;margin:0 auto">
+        Ajuste o slider de preço e veja em tempo real sua posição competitiva,
+        impacto financeiro e projeção de arbitragem.
+    </p>
+</div>
+
+{% else %}
+
+{# ─── LAYOUT PRINCIPAL ─── #}
+<div class="sim-main" id="simMain">
+
+{# ══════════════════════════════════════
+   COLUNA ESQUERDA — Blocos 1 e 4
+══════════════════════════════════════ #}
+<div class="panel-left">
+
+    {# ── Bloco 1: Painel de Controle ── #}
+    <div class="sim-card">
+        <div class="sim-card-hd">
+            <span class="sim-card-num">1</span>
+            <span class="sim-card-title">Painel de Controle do Exame</span>
+        </div>
+        <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+
+            {# Info do exame #}
+            <div class="exam-info-box">
+                <div style="font-size:12.5px;font-weight:700;color:var(--text-primary)">
+                    Exame: {{ selectedProcedure.name ?? '—' }}
+                </div>
+                <div class="exam-info-row">
+                    <span>TUSS: <strong>{{ selectedProcedure.tuss_code ?? selectedProcedure.tussCode ?? '—' }}</strong></span>
+                    <span>Cidade: <strong>{{ selectedUnit.city ?? 'Curitiba' }}</strong></span>
+                </div>
+                <div class="exam-info-row" style="margin-top:2px">
+                    <span>Data base: <strong>{{ collectedDate ? collectedDate|date('d/m/Y') : 'hoje' }}</strong></span>
+                </div>
+            </div>
+
+            {# Preço atual #}
+            <div class="current-price-box">
+                <div class="current-price-label">Preço Atual da Unidade:</div>
+                <div style="display:flex;align-items:center;justify-content:center">
+                    <span class="current-price-val" id="currentPriceDisplay">
+                        {% if unitCurrentPrice %}
+                            R$ {{ unitCurrentPrice|number_format(2,',','.') }}
+                        {% else %}—{% endif %}
+                    </span>
+                    {% if unitCurrentPrice %}
+                    <span class="current-price-arrow">↑</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Slider #}
+            <div class="slider-box">
+                <div class="slider-title">Simular novo preço</div>
+                <div class="slider-simval" id="sliderDisplay">
+                    R$ <span id="sliderVal">{{ unitCurrentPrice ? unitCurrentPrice|number_format(2,',','.') : sliderMin|number_format(2,',','.') }}</span>
+                </div>
+                <input
+                    type="range"
+                    id="priceSlider"
+                    class="sim-slider"
+                    min="{{ sliderMin }}"
+                    max="{{ sliderMax }}"
+                    step="0.5"
+                    value="{{ unitCurrentPrice ?? sliderMin }}"
+                    style="--pct:50%"
+                >
+                <div class="slider-range-labels">
+                    <span>Min: R$ {{ sliderMin|number_format(2,',','.') }}</span>
+                    <span>Max: R$ {{ sliderMax|number_format(2,',','.') }}</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    {# ── Bloco 4: Matriz de Posicionamento ── #}
+    <div class="sim-card">
+        <div class="sim-card-hd">
+            <span class="sim-card-num">4</span>
+            <span class="sim-card-title">Matriz de Posicionamento</span>
+        </div>
+        <div style="padding:12px 14px">
+            <div class="matrix-outer">
+                <div class="q-axis-y">Pressão Competitiva (Unidades Abaixo)</div>
+                <div>
+                    <div class="qgrid-sim" id="quadrantGrid">
+                        <div class="q-sim q1s" id="q-oportunidade">
+                            <div class="q-sim-title">Oportunidade</div>
+                            <div class="q-sim-sub">Preço Baixo, Alta Pressão</div>
+                            <span class="q-dot" id="qdot-1"></span>
+                        </div>
+                        <div class="q-sim q2s" id="q-premium">
+                            <div class="q-sim-title">Estratégia Premium</div>
+                            <div class="q-sim-sub">Preço Alto, Alta Pressão</div>
+                            <span class="q-dot" id="qdot-2"></span>
+                        </div>
+                        <div class="q-sim q3s" id="q-penetracao">
+                            <div class="q-sim-title">Penetração</div>
+                            <div class="q-sim-sub">Preço Baixo, Baixa Pressão</div>
+                            <span class="q-dot" id="qdot-3"></span>
+                        </div>
+                        <div class="q-sim q4s" id="q-irrelevante">
+                            <div class="q-sim-title">Irrelevante</div>
+                            <div class="q-sim-sub">Preço Alto, Baixa Pressão</div>
+                            <span class="q-dot" id="qdot-4"></span>
+                        </div>
+                    </div>
+                    <div class="q-axis-x">Preço Relativo ao Mercado (Abaixo / Acima da Média)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>{# /panel-left #}
+
+{# ══════════════════════════════════════
+   COLUNA CENTRAL — Bloco 2
+══════════════════════════════════════ #}
+<div class="sim-card">
+    <div class="sim-card-hd">
+        <span class="sim-card-num">2</span>
+        <span class="sim-card-title">Impacto Competitivo</span>
+    </div>
+    <div style="padding:14px 16px">
+        <div style="height:320px"><canvas id="scatterChart"></canvas></div>
+
+        {# KPIs dinâmicos abaixo do gráfico #}
+        <div class="impact-kpis">
+            <div class="ikpi">
+                <div class="ikpi-label">Posição no Ranking:</div>
+                <div class="ikpi-val" id="kpiRank">—</div>
+                <div class="ikpi-sub">de <span id="kpiTotal">{{ totalUnits }}</span> unidades</div>
+            </div>
+            <div class="ikpi">
+                <div class="ikpi-label">Unidades Abaixo do Preço Simulado:</div>
+                <div class="ikpi-val" id="kpiBelow">—</div>
+                <div class="ikpi-sub">concorrentes mais baratos</div>
+            </div>
+            <div class="ikpi">
+                <div class="ikpi-label">Percentual de Mercado Acima:</div>
+                <div class="ikpi-val" id="kpiPctAbove">—</div>
+                <div class="ikpi-sub">do mercado está acima de você</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ══════════════════════════════════════
+   COLUNA DIREITA — Bloco 3
+══════════════════════════════════════ #}
+<div style="display:flex;flex-direction:column;gap:10px">
+    <div class="sim-card">
+        <div class="sim-card-hd">
+            <span class="sim-card-num">3</span>
+            <span class="sim-card-title">Impacto Financeiro e Risco</span>
+        </div>
+        <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+
+            {# Diferença para média #}
+            <div class="fin-card">
+                <div class="fin-card-title">Diferença para Média do Mercado</div>
+                <div class="fin-card-sub" id="finAvgSub">(Avg R$ {{ marketAvg ? marketAvg|number_format(2,',','.') : '—' }})</div>
+                <div class="fin-card-diff" id="finDiffEq">R$ — - R$ {{ marketAvg ? marketAvg|number_format(2,',','.') : '—' }}</div>
+                <div class="fin-card-val neu" id="finDiffVal">= —</div>
+            </div>
+
+            {# Distância do mínimo #}
+            <div class="fin-card">
+                <div class="fin-card-title">Distância do Mínimo</div>
+                <div class="fin-card-sub">(Min R$ {{ marketMin ? marketMin|number_format(2,',','.') : '—' }})</div>
+                <div class="fin-card-val neu" id="finDistMin">—</div>
+            </div>
+
+            {# Zona de Competitividade #}
+            <div class="fin-card">
+                <div class="fin-card-title">Zona de Competitividade</div>
+                <div class="zone-strip" style="margin-top:8px">
+                    <div class="zone-pill zg" id="zone-0">0-5%</div>
+                    <div class="zone-pill zy" id="zone-1">5-15%</div>
+                    <div class="zone-pill zo" id="zone-2">15-30%</div>
+                    <div class="zone-pill zr" id="zone-3">30%+</div>
+                </div>
+                <div class="zone-label-big" id="zoneLabel">—</div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+</div>{# /sim-main #}
+
+{# ══════════════════════════════════════
+   BLOCO 5 — Projeção de Arbitragem
+══════════════════════════════════════ #}
+<div class="sim-sec-label">5&nbsp; Projeção de Arbitragem</div>
+<div class="arbitrage-box">
+    <div class="arb-text" id="arbitrageText">
+        Mova o slider para ver a projeção de arbitragem em tempo real.
+    </div>
+</div>
+
+{% endif %}
+</div>{# /sim-wrap #}
+{% endblock %}
+
+{% block extra_js %}
+{% if unitId and procedureId %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size   = 11;
+Chart.defaults.color       = '#9399ad';
+
+// ── Dados iniciais do PHP ────────────────────────────────────────────────────
+const CALC_URL    = '{{ path("price_simulation_calc") }}';
+const PROC_ID     = '{{ procedureId }}';
+const UNIT_ID     = '{{ unitId }}';
+const SLIDER_MIN  = {{ sliderMin }};
+const SLIDER_MAX  = {{ sliderMax }};
+const MKT_MIN     = {{ marketMin ?? 0 }};
+const MKT_AVG     = {{ marketAvg ?? 0 }};
+const TOTAL_UNITS = {{ totalUnits }};
+
+const fmtR  = v  => 'R$ ' + parseFloat(v).toFixed(2).replace('.',',');
+const fmtP  = v  => parseFloat(v).toFixed(1) + '%';
+const sign  = v  => v >= 0 ? '+' : '';
+
+// ── Scatter Chart ────────────────────────────────────────────────────────────
+const initialPoints = {{ scatterPoints|raw }};
+
+function buildDatasets(points) {
+    const others   = points.filter(p => !p.is_selected);
+    const selected = points.filter(p =>  p.is_selected);
+    const getColor = pt => {
+        const d = pt.y;
+        if (d <= 5)  return 'rgba(5,150,105,.55)';
+        if (d <= 15) return 'rgba(217,119,6,.55)';
+        if (d <= 30) return 'rgba(234,88,12,.55)';
+        return 'rgba(220,38,38,.55)';
+    };
+    return [
+        {
+            label: 'Mercado',
+            data: others.map(p => ({ x: p.x, y: p.y, label: p.label })),
+            backgroundColor: others.map(getColor),
+            borderColor:     others.map(getColor).map(c => c.replace(',.55)',',1)')),
+            borderWidth: 1,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+        },
+        {
+            label: 'Sua Unidade',
+            data: selected.map(p => ({ x: p.x, y: p.y, label: p.label })),
+            backgroundColor: 'rgba(37,99,235,.7)',
+            borderColor: '#2563eb',
+            borderWidth: 3,
+            pointRadius: 12,
+            pointHoverRadius: 15,
+            pointStyle: 'circle',
+        },
+    ];
+}
+
+const scCtx  = document.getElementById('scatterChart').getContext('2d');
+const scChart = new Chart(scCtx, {
+    type: 'bubble',
+    data: { datasets: buildDatasets(initialPoints) },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 200 },
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { color:'#5a6072', font:{size:11}, padding:10, boxWidth:10, usePointStyle:true },
+            },
+            tooltip: {
+                backgroundColor:'#1a1d2e', titleColor:'#e2e8f0', bodyColor:'#9399ad',
+                borderColor:'#2d3251', borderWidth:1, padding:10,
+                callbacks: {
+                    title: i  => i[0].raw.label || '',
+                    label: c  => [` Preço: ${fmtR(c.parsed.x)}`, ` Dist. mín: ${fmtP(c.parsed.y)}`],
+                },
+            },
+        },
+        scales: {
+            x: {
+                grid: { color:'#f0f2f8' },
+                ticks: { color:'#9399ad', callback: v => fmtR(v) },
+                title: { display:true, text:'Preço (R$)', color:'#9399ad', font:{size:10} },
+            },
+            y: {
+                grid: { color:'#f0f2f8' },
+                ticks: { color:'#9399ad', callback: v => v+'%' },
+                title: { display:true, text:'Distância Percentual do Mínimo (%)', color:'#9399ad', font:{size:10} },
+            },
+        },
+    },
+});
+
+// ── Slider ───────────────────────────────────────────────────────────────────
+const slider      = document.getElementById('priceSlider');
+const sliderValEl = document.getElementById('sliderVal');
+
+function updateSliderTrack() {
+    const pct = (slider.value - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN) * 100;
+    slider.style.setProperty('--pct', pct + '%');
+    sliderValEl.textContent = parseFloat(slider.value).toFixed(2).replace('.',',');
+}
+updateSliderTrack();
+
+// ── Recalcular via AJAX ───────────────────────────────────────────────────────
+let debounceTimer = null;
+
+async function recalculate(price) {
+    document.getElementById('simMain').style.opacity = '.6';
+    try {
+        const url  = `${CALC_URL}?procedure_id=${PROC_ID}&unit_id=${UNIT_ID}&price=${price}`;
+        const data = await (await fetch(url)).json();
+        applyResults(data);
+    } catch(e) { console.error(e); }
+    document.getElementById('simMain').style.opacity = '1';
+}
+
+function applyResults(d) {
+    // KPIs impacto competitivo
+    document.getElementById('kpiRank').textContent     = d.rank_position + 'º';
+    document.getElementById('kpiBelow').textContent    = d.units_below;
+    document.getElementById('kpiPctAbove').textContent = d.pct_above + '%';
+    document.getElementById('kpiTotal').textContent    = d.total_units;
+
+    // Financeiro — diferença para média
+    const diff   = d.diff_to_avg;
+    const diffEl = document.getElementById('finDiffVal');
+    diffEl.textContent = (diff >= 0 ? '= +' : '= ') + fmtR(Math.abs(diff));
+    diffEl.className   = 'fin-card-val ' + (diff < 0 ? 'neg' : diff > 0 ? 'pos' : 'neu');
+    document.getElementById('finDiffEq').textContent   = fmtR(d.simulated) + ' - ' + fmtR(d.avg_price);
+    document.getElementById('finAvgSub').textContent   = '(Avg ' + fmtR(d.avg_price) + ')';
+
+    // Distância do mínimo
+    const distEl = document.getElementById('finDistMin');
+    distEl.textContent = (d.dist_from_min >= 0 ? '+' : '') + d.dist_from_min + '%';
+    distEl.className   = 'fin-card-val ' + (d.dist_from_min > 30 ? 'neg' : d.dist_from_min <= 5 ? 'pos' : 'neu');
+
+    // Zona de competitividade
+    const zones    = ['zone-0','zone-1','zone-2','zone-3'];
+    const zoneIdx  = d.dist_from_min <= 5 ? 0 : d.dist_from_min <= 15 ? 1 : d.dist_from_min <= 30 ? 2 : 3;
+    zones.forEach((id,i) => document.getElementById(id).classList.toggle('active', i === zoneIdx));
+    document.getElementById('zoneLabel').textContent = d.zone.desc;
+    document.getElementById('zoneLabel').style.color = ['#059669','#d97706','#ea580c','#dc2626'][zoneIdx];
+
+    // Matriz de quadrantes
+    const isLowPrice   = d.simulated <= d.avg_price;
+    const isHighPress  = d.units_below >= d.total_units * 0.5;
+    const activeQuad   = isLowPrice && isHighPress  ? 1 :
+                         !isLowPrice && isHighPress  ? 2 :
+                         isLowPrice && !isHighPress  ? 3 : 4;
+    for(let i=1;i<=4;i++){
+        document.getElementById('qdot-'+i).classList.toggle('active', i === activeQuad);
+    }
+
+    // Scatter — atualiza posição da unidade
+    scChart.data.datasets = buildDatasets(d.scatter);
+    scChart.update();
+
+    // Projeção de Arbitragem
+    document.getElementById('arbitrageText').innerHTML =
+        `Se posicionar a <span class="hi-price">${fmtR(d.simulated)}</span>, você ficará:<br>
+         <span class="hi-green">${d.rank_position}º de ${d.total_units} unidades</span> |
+         <span class="${d.dist_from_min > 30 ? 'hi-red' : 'hi-green'}">${sign(d.dist_from_min)}${d.dist_from_min}% acima do mínimo</span><br>
+         <strong>${d.units_below} unidades abaixo de você</strong> |
+         <strong>${d.units_above} unidades acima de você</strong>`;
+}
+
+// ── Event listener do slider ──────────────────────────────────────────────────
+slider.addEventListener('input', () => {
+    updateSliderTrack();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => recalculate(parseFloat(slider.value)), 180);
+});
+
+// ── Calcula ao carregar com o preço atual ─────────────────────────────────────
+recalculate(parseFloat(slider.value));
+</script>
+{% endif %}
+{% endblock %}

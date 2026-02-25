@@ -1,0 +1,934 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Comparativo de Unidades{% endblock %}
+{% block page_title %}Comparativo de Unidades{% endblock %}
+{% block page_subtitle %}Diagnóstico estratégico · tabela de guerra · posicionamento competitivo{% endblock %}
+
+{% block topbar_actions %}
+{% if unitId %}
+<button class="btn-csv" onclick="exportTableToCSV('warTable','tabela-guerra.csv')">
+    <i class="bi bi-download"></i> Exportar CSV
+</button>
+{% else %}
+<button class="btn-csv" onclick="exportTableToCSV('overviewTable','unidades-overview.csv')">
+    <i class="bi bi-download"></i> Exportar CSV
+</button>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ═══════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════ */
+.uc-wrap { display:flex; flex-direction:column; gap:16px; }
+
+/* ═══════════════════════════════════════
+   FILTROS
+═══════════════════════════════════════ */
+.uc-filters {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    box-shadow: var(--shadow);
+    display: flex; gap:12px; align-items:flex-end; flex-wrap:wrap;
+}
+
+/* ═══════════════════════════════════════
+   HEADER BANNER DA UNIDADE
+═══════════════════════════════════════ */
+.unit-banner {
+    background: linear-gradient(135deg, #1e3a6e 0%, #1a5276 55%, #0e6655 100%);
+    border-radius: var(--radius-lg);
+    padding: 13px 22px;
+    display: flex; align-items:center; gap:20px; flex-wrap:wrap;
+    box-shadow: 0 4px 20px rgba(30,58,110,.25);
+    font-size: 12.5px; font-weight: 700;
+    color: rgba(255,255,255,.92);
+    letter-spacing: .03em;
+}
+.unit-banner i { font-size:17px; color:rgba(255,255,255,.75); flex-shrink:0; }
+.unit-banner-sep { color:rgba(255,255,255,.3); }
+.unit-banner-val { color:#fff; }
+.unit-banner-ts  {
+    margin-left:auto; font-size:10px;
+    color:rgba(255,255,255,.5); font-family:'DM Mono',monospace;
+}
+
+/* ═══════════════════════════════════════
+   SECTION LABEL
+═══════════════════════════════════════ */
+.sec-label {
+    font-size:10.5px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.07em; color:var(--text-secondary);
+    padding-left:2px; margin-bottom:8px;
+}
+
+/* ═══════════════════════════════════════
+   CARD
+═══════════════════════════════════════ */
+.uc-card {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+}
+.uc-hd {
+    padding:12px 16px 10px;
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:flex-start; justify-content:space-between;
+}
+.uc-hd-left {}
+.uc-title   { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--text-secondary); }
+.uc-sub     { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+/* ═══════════════════════════════════════
+   BLOCO CRÍTICO — 5 colunas
+═══════════════════════════════════════ */
+.critico-row {
+    display:grid;
+    grid-template-columns: 190px 210px 170px 1fr 250px;
+    gap:12px;
+    align-items:start;
+}
+@media(max-width:1400px){ .critico-row { grid-template-columns:repeat(3,1fr); } }
+@media(max-width:900px)  { .critico-row { grid-template-columns:1fr 1fr; } }
+
+/* KPI card crítico */
+.kpi-crit {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius-lg);
+    padding:16px 18px 14px;
+    box-shadow:var(--shadow);
+}
+.kpi-crit-label {
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.07em; color:var(--text-muted); margin-bottom:10px;
+    text-align:center;
+}
+
+/* Gauge */
+.gauge-canvas-wrap { position:relative; height:80px; }
+.gauge-pct {
+    position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+    font-size:24px; font-weight:700; color:var(--text-primary);
+    font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+.gauge-status {
+    text-align:center; font-size:12px; font-weight:700;
+    margin-top:6px; color:var(--text-secondary);
+}
+.gauge-leads {
+    text-align:center; font-size:11px; color:var(--text-muted); margin-top:3px;
+}
+
+/* Perda Potencial */
+.perda-val {
+    display:flex; align-items:center; gap:6px;
+    font-size:30px; font-weight:700; color:var(--red);
+    font-variant-numeric:tabular-nums; line-height:1.1;
+    margin:8px 0 4px;
+}
+.perda-val .arrow { font-size:28px; }
+.perda-tag { font-size:12px; font-weight:700; color:var(--red); margin-bottom:6px; }
+.perda-sub { font-size:11px; color:var(--text-muted); }
+
+/* Ranking */
+.rank-num {
+    font-size:54px; font-weight:700; color:var(--text-primary);
+    line-height:1; font-variant-numeric:tabular-nums;
+    text-align:center; margin:6px 0 4px;
+}
+.rank-num sup { font-size:22px; font-weight:400; color:var(--text-muted); }
+.rank-sub { text-align:center; font-size:11px; color:var(--text-muted); }
+
+/* ═══════════════════════════════════════
+   TABELA DE GUERRA
+═══════════════════════════════════════ */
+.war-table { width:100%; border-collapse:collapse; }
+.war-table thead th {
+    font-size:11px; font-weight:700; color:var(--text-primary);
+    padding:10px 14px; border-bottom:1px solid var(--border);
+    background:var(--surface); text-align:left; white-space:nowrap;
+}
+.war-table tbody td {
+    padding:8px 14px; border-bottom:1px solid #f0f2f8; font-size:12.5px;
+}
+.war-table tbody tr:last-child td { border-bottom:none; }
+.war-table tbody tr:hover td { background:var(--surface-2); }
+.war-mono { font-family:'DM Mono',monospace; font-size:12px; }
+.st-leader { color:#059669; font-weight:700; }
+.st-compet { color:#d97706; font-weight:700; }
+.st-out    { color:#dc2626; font-weight:700; }
+.st-dot    { width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:5px; }
+.st-dot.g  { background:#059669; }
+.st-dot.a  { background:#d97706; }
+.st-dot.r  { background:#dc2626; }
+
+/* ═══════════════════════════════════════
+   BOTTOM GRID: scatter + evolução + risco
+═══════════════════════════════════════ */
+.bottom-row {
+    display:grid;
+    grid-template-columns: 1fr 1fr 280px;
+    gap:14px; align-items:start;
+}
+@media(max-width:1200px){ .bottom-row { grid-template-columns:1fr 1fr; } }
+@media(max-width:900px)  { .bottom-row { grid-template-columns:1fr; } }
+
+/* Quadrantes */
+.qgrid {
+    display:grid; grid-template-columns:1fr 1fr;
+    grid-template-rows:1fr 1fr;
+    gap:3px; border-radius:var(--radius); overflow:hidden;
+}
+.quad {
+    padding:10px 12px; position:relative;
+    display:flex; flex-direction:column; justify-content:flex-start;
+}
+.quad-title { font-size:12px; font-weight:700; margin-bottom:2px; }
+.quad-sub   { font-size:10px; opacity:.7; }
+.quad-badge {
+    position:absolute; bottom:8px; right:8px;
+    font-size:9px; font-weight:700; padding:2px 7px;
+    border-radius:10px; background:rgba(0,0,0,.1);
+}
+.quad-badge.active { background:#2563eb; color:#fff; }
+.q1 { background:#d1fae5; color:#065f46; }
+.q2 { background:#dbeafe; color:#1e3a8a; }
+.q3 { background:#fef3c7; color:#78350f; }
+.q4 { background:#f1f5f9; color:#475569; }
+
+/* Risco Competitivo */
+.risk-item { margin-bottom:16px; }
+.risk-label { display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:var(--text-secondary); margin-bottom:5px; }
+.risk-label strong { color:var(--text-primary); font-size:13px; }
+.risk-track { height:11px; background:var(--surface-2); border-radius:6px; overflow:hidden; }
+.risk-fill  { height:100%; border-radius:6px; transition:width .5s ease; }
+
+/* Overview table utils */
+.ranking-bar-wrap { display:flex; align-items:center; gap:8px; }
+.ranking-bar { height:6px; border-radius:3px; background:var(--brand); }
+.ranking-bar.best  { background:var(--green); }
+.ranking-bar.worst { background:var(--red); }
+.star-rating { color:#f59e0b; letter-spacing:1px; font-size:13px; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="uc-wrap">
+
+{# ═══════════════════════════════════════════════════
+   FILTROS
+═══════════════════════════════════════════════════ #}
+<form method="GET" action="{{ path('unit_comparison_index') }}" class="uc-filters">
+    <div class="filter-group">
+        <label class="filter-label">De</label>
+        <input type="date" name="date_from" class="filter-input" value="{{ filter.dateFrom }}">
+    </div>
+    <div class="filter-group">
+        <label class="filter-label">Até</label>
+        <input type="date" name="date_to" class="filter-input" value="{{ filter.dateTo }}">
+    </div>
+    <div class="filter-group" style="flex:2;min-width:200px">
+        <label class="filter-label">Unidade — Modo Diagnóstico</label>
+        <select name="unit_id" class="filter-select select2-single" style="width:100%"
+                        data-search-url="{{ path('search_units') }}">
+            <option value="">-- Visão geral --</option>
+        </select>
+    </div>
+    <div class="filter-group" style="flex:1.5;min-width:180px">
+        <label class="filter-label">Exame (ranking detalhado)</label>
+        <select name="procedure_id" class="filter-select select2-single" style="width:100%"
+                    data-search-url="{{ path('search_procedures') }}">
+            <option value="">-- Todos --</option>
+        </select>
+    </div>
+    <div class="filter-group" style="flex:0">
+        <label class="filter-label">&nbsp;</label>
+        <div style="display:flex;gap:6px">
+            <button type="submit" class="btn-filter btn-primary-filter">
+                <i class="bi bi-funnel-fill"></i> Filtrar
+            </button>
+            <a href="{{ path('unit_comparison_index') }}" class="btn-filter btn-reset-filter">
+                <i class="bi bi-x"></i>
+            </a>
+        </div>
+    </div>
+</form>
+
+{% if unitId and selectedUnit %}
+{# ═══════════════════════════════════════════════════
+   MODO DIAGNÓSTICO
+═══════════════════════════════════════════════════ #}
+
+{# ── Header Banner ── #}
+<div class="unit-banner">
+    <i class="bi bi-building-check"></i>
+    <span>Unidade Selecionada:</span>
+    <span class="unit-banner-val">{{ (selectedUnit.facilityName ?? selectedUnit.socialName ?? '—')|upper }}</span>
+    {% if selectedUnit.city ?? '' %}
+    <span class="unit-banner-sep">–</span>
+    <span>Cidade:</span>
+    <span class="unit-banner-val">{{ selectedUnit.city|upper }}{% if selectedUnit.state ?? '' %} – {{ selectedUnit.state }}{% endif %}</span>
+    {% endif %}
+    <span class="unit-banner-sep">–</span>
+    <span>Data da Coleta:</span>
+    <span class="unit-banner-val">{{ 'now'|date('d/m/Y') }}</span>
+    <span class="unit-banner-sep">–</span>
+    <span>Exames Comparados:</span>
+    <span class="unit-banner-val">{{ totalProcs }}</span>
+    <span class="unit-banner-ts" id="ucTs">–</span>
+</div>
+
+{# ── Bloco Crítico ── #}
+<div class="sec-label">Bloco Crítico — Diagnóstico Imediato</div>
+<div class="critico-row">
+
+    {# 1. Gauge Competitividade #}
+    <div class="kpi-crit">
+        <div class="kpi-crit-label">Índice de Competitividade</div>
+        <div class="gauge-canvas-wrap">
+            <canvas id="gaugeChart"></canvas>
+            <span class="gauge-pct">{{ competIdx }}%</span>
+        </div>
+        <div class="gauge-status">
+            {% if competIdx >= 70 %}LÍDER
+            {% elseif competIdx >= 40 %}COMPETITIVO
+            {% else %}EM RISCO{% endif %}
+        </div>
+        <div class="gauge-leads">({{ leaderCount }}/{{ totalProcs }} Lideranças)</div>
+    </div>
+
+    {# 2. Perda Potencial #}
+    <div class="kpi-crit">
+        <div class="kpi-crit-label">Perda Potencial de Receita</div>
+        <div class="perda-val">
+            <span class="arrow">↑</span>
+            +{{ avgDeltaPct is not null ? avgDeltaPct|number_format(1,',','.') : '—' }}%
+        </div>
+        <div class="perda-tag">ABAIXO DA MÉDIA</div>
+        <div class="perda-sub">Delta médio vs mínimo de mercado</div>
+    </div>
+
+    {# 3. Ranking Geral #}
+    <div class="kpi-crit">
+        <div class="kpi-crit-label">Ranking Geral</div>
+        <div class="rank-num">{{ rankingPosition }}<sup>º</sup></div>
+        <div class="rank-sub">de {{ totalUnits }} Unidades</div>
+        <div class="rank-sub" style="margin-top:2px">Média delta percentual</div>
+    </div>
+
+    {# 4. Gráfico de Posicionamento Relativo (scatter) #}
+    <div class="uc-card">
+        <div class="uc-hd">
+            <div class="uc-hd-left">
+                <div class="uc-title">Gráfico de Posicionamento Relativo</div>
+                <div class="uc-sub">Preço vs Distância do Mínimo · hoje</div>
+            </div>
+        </div>
+        <div style="padding:10px 14px 12px">
+            <div style="height:188px"><canvas id="scatterChart"></canvas></div>
+        </div>
+    </div>
+
+    {# 5. Matriz de Posicionamento (quadrantes) #}
+    <div class="uc-card">
+        <div class="uc-hd">
+            <div class="uc-hd-left">
+                <div class="uc-title">Matriz de Posicionamento</div>
+            </div>
+        </div>
+        <div style="padding:12px">
+            {% set uLabel      = (selectedUnit.facilityName ?? selectedUnit.socialName ?? '—')|slice(0,14) %}
+            {% set isLowPrice  = competIdx >= 50 %}
+            {% set isHighPres  = totalProcs >= 5 %}
+            <div class="qgrid" style="height:200px">
+                <div class="quad q1">
+                    <div class="quad-title">Dominante</div>
+                    <div class="quad-sub">(Preço Baixo, Alta Presença)</div>
+                    {% if isLowPrice and isHighPres %}
+                        <div style="margin-top:auto;font-size:11px;font-weight:700;color:#065f46">{{ uLabel }}</div>
+                        <span class="quad-badge active">✓</span>
+                    {% else %}<span class="quad-badge"></span>{% endif %}
+                </div>
+                <div class="quad q2">
+                    <div class="quad-title">Estratégia Premium</div>
+                    <div class="quad-sub">(Preço Alto, Alta Presença)</div>
+                    {% if not isLowPrice and isHighPres %}
+                        <div style="margin-top:auto;font-size:11px;font-weight:700;color:#1e3a8a">{{ uLabel }}</div>
+                        <span class="quad-badge active">✓</span>
+                    {% else %}<span class="quad-badge"></span>{% endif %}
+                </div>
+                <div class="quad q3">
+                    <div class="quad-title">Penetração</div>
+                    <div class="quad-sub">(Preço Baixo, Baixa Presença)</div>
+                    {% if isLowPrice and not isHighPres %}
+                        <div style="margin-top:auto;font-size:11px;font-weight:700;color:#78350f">{{ uLabel }}</div>
+                        <span class="quad-badge active">✓</span>
+                    {% else %}<span class="quad-badge"></span>{% endif %}
+                </div>
+                <div class="quad q4">
+                    <div class="quad-title">Irrelevante</div>
+                    <div class="quad-sub">(Preço Alto, Baixa Presença)</div>
+                    {% if not isLowPrice and not isHighPres %}
+                        <div style="margin-top:auto;font-size:11px;font-weight:700;color:#475569">{{ uLabel }}</div>
+                        <span class="quad-badge active">✓</span>
+                    {% else %}<span class="quad-badge"></span>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>{# /critico-row #}
+
+{# ── Tabela de Guerra ── #}
+<div class="sec-label">Tabela de Guerra</div>
+<div class="uc-card">
+    <div class="uc-hd">
+        <div class="uc-hd-left">
+            <div class="uc-title">Comparativo Exame a Exame · Hoje</div>
+            <div class="uc-sub">{{ totalProcs }} exames monitorados para esta unidade</div>
+        </div>
+        <button class="btn-csv" onclick="exportTableToCSV('warTable','tabela-guerra.csv')">
+            <i class="bi bi-download"></i> CSV
+        </button>
+    </div>
+    {% if warTable is empty %}
+    <div style="padding:30px;text-align:center;color:var(--text-muted)">
+        <i class="bi bi-table" style="font-size:24px;display:block;margin-bottom:8px"></i>
+        Sem dados de coleta para esta unidade hoje.
+    </div>
+    {% else %}
+    <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table class="war-table" id="warTable">
+            <thead>
+                <tr>
+                    <th>Exame</th>
+                    <th>Preço Unidade</th>
+                    <th>Mínimo Mercado</th>
+                    <th>Média</th>
+                    <th>Máximo</th>
+                    <th>Diferença %</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in warTable %}
+                {% set dp = r.diff_pct|round %}
+                {% if dp == 0 %}
+                    {% set sc='st-leader' %}{% set dc='g' %}{% set lb='Líder' %}
+                {% elseif dp <= 50 %}
+                    {% set sc='st-compet' %}{% set dc='a' %}{% set lb='Competitivo' %}
+                {% else %}
+                    {% set sc='st-out'    %}{% set dc='r' %}{% set lb='Fora do Mercado' %}
+                {% endif %}
+                <tr>
+                    <td style="font-weight:500">{{ r.exam_name }}</td>
+                    <td class="war-mono">R$ {{ r.unit_price|number_format(2,',','.') }}</td>
+                    <td class="war-mono" style="color:var(--green)">R$ {{ r.mkt_min|number_format(2,',','.') }}</td>
+                    <td class="war-mono">R$ {{ r.mkt_avg|number_format(2,',','.') }}</td>
+                    <td class="war-mono" style="color:var(--red)">R$ {{ r.mkt_max|number_format(2,',','.') }}</td>
+                    <td class="war-mono {{ sc }}">{{ dp == 0 ? '0%' : '+' ~ dp ~ '%' }}</td>
+                    <td>
+                        <span class="{{ sc }}" style="display:inline-flex;align-items:center">
+                            <span class="st-dot {{ dc }}"></span>{{ lb }}
+                        </span>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+{# ── Bottom Row: Gráfico Posicionamento + Evolução 7 dias + Risco Competitivo ── #}
+<div class="bottom-row">
+
+    {# Gráfico de Posicionamento (quadrantes grandes) #}
+    <div class="uc-card">
+        <div class="uc-hd">
+            <div class="uc-hd-left">
+                <div class="uc-title">Gráfico de Posicionamento</div>
+            </div>
+        </div>
+        <div style="padding:12px">
+            {% set uLabelB = (selectedUnit.facilityName ?? selectedUnit.socialName ?? '—')|slice(0,14) %}
+            <div class="qgrid" style="height:230px">
+                <div class="quad q1">
+                    <div class="quad-title" style="font-size:13px">Dominante</div>
+                    <div class="quad-sub" style="font-size:11px">(Preço Baixo, Alta Presença)</div>
+                    {% if competIdx >= 50 and totalProcs >= 5 %}
+                        <div style="margin-top:auto;font-size:12px;font-weight:700;color:#065f46">{{ uLabelB }}</div>
+                        <span class="quad-badge active">✓</span>
+                    {% else %}<span class="quad-badge"></span>{% endif %}
+                </div>
+                <div class="quad q2">
+                    <div class="quad-title" style="font-size:13px">Estratégia Premium</div>
+                    <div class="quad-sub" style="font-size:11px">(Preço Alto, Alta Presença)</div>
+                    {% if competIdx < 50 and totalProcs >= 5 %}
+                        <div style="margin-top:auto;font-size:12px;font-weight:700;color:#1e3a8a">{{ uLabelB }}</div>
+                        <span class="quad-badge active">✓</span>
+                    {% else %}<span class="quad-badge"></span>{% endif %}
+                </div>
+                <div class="quad q3">
+                    <div class="quad-title" style="font-size:13px">Penetração</div>
+                    <div class="quad-sub" style="font-size:11px">(Preço Baixo, Baixa Presença)</div>
+                    {% if competIdx >= 50 and totalProcs < 5 %}
+                        <div style="margin-top:auto;font-size:12px;font-weight:700;color:#78350f">{{ uLabelB }}</div>
+                        <span class="quad-badge active">✓</span>
+                    {% else %}<span class="quad-badge"></span>{% endif %}
+                </div>
+                <div class="quad q4">
+                    <div class="quad-title" style="font-size:13px">Irrelevante</div>
+                    <div class="quad-sub" style="font-size:11px">(Preço Alto, Baixa Presença)</div>
+                    {% if competIdx < 50 and totalProcs < 5 %}
+                        <div style="margin-top:auto;font-size:12px;font-weight:700;color:#475569">{{ uLabelB }}</div>
+                        <span class="quad-badge active">✓</span>
+                    {% else %}<span class="quad-badge"></span>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Evolução 7 dias — linha dupla #}
+    <div class="uc-card">
+        <div class="uc-hd">
+            <div class="uc-hd-left">
+                <div class="uc-title">Evolução da Unidade (7 dias)</div>
+            </div>
+            <div style="display:flex;gap:14px;font-size:10.5px;color:var(--text-muted);align-items:center;flex-shrink:0">
+                <span>
+                    <span style="display:inline-block;width:10px;height:3px;background:#2563eb;border-radius:2px;vertical-align:middle;margin-right:3px"></span>
+                    Preço Unidade
+                </span>
+                <span>
+                    <span style="display:inline-block;width:10px;height:3px;background:#9ca3af;border-radius:2px;vertical-align:middle;margin-right:3px"></span>
+                    Preço Médio Mercado
+                </span>
+            </div>
+        </div>
+        <div style="padding:12px 16px">
+            <div style="height:230px"><canvas id="trendUnitChart"></canvas></div>
+        </div>
+    </div>
+
+    {# Indicador de Risco Competitivo #}
+    <div class="uc-card">
+        <div class="uc-hd">
+            <div class="uc-hd-left">
+                <div class="uc-title">Indicador de Risco Competitivo</div>
+                <div class="uc-sub">Exames por faixa de distância do mínimo</div>
+            </div>
+        </div>
+        <div style="padding:18px 18px 14px">
+
+            <div class="risk-item">
+                <div class="risk-label">
+                    <span>Até 5% abaixo</span>
+                    <strong>{{ riskBands['5'] }} Unidades</strong>
+                </div>
+                {% set w5 = totalProcs > 0 ? (riskBands['5'] / totalProcs * 100)|round : 0 %}
+                <div class="risk-track">
+                    <div class="risk-fill" style="width:{{ w5 }}%;background:#2563eb"></div>
+                </div>
+            </div>
+
+            <div class="risk-item">
+                <div class="risk-label">
+                    <span>Até 10% abaixo</span>
+                    <strong>{{ riskBands['10'] }} Unidades</strong>
+                </div>
+                {% set w10 = totalProcs > 0 ? (riskBands['10'] / totalProcs * 100)|round : 0 %}
+                <div class="risk-track">
+                    <div class="risk-fill" style="width:{{ w10 }}%;background:#f87171"></div>
+                </div>
+            </div>
+
+            <div class="risk-item">
+                <div class="risk-label">
+                    <span>Até 20% abaixo</span>
+                    <strong>{{ riskBands['20'] }} Unidades</strong>
+                </div>
+                {% set w20 = totalProcs > 0 ? (riskBands['20'] / totalProcs * 100)|round : 0 %}
+                <div class="risk-track">
+                    <div class="risk-fill" style="width:{{ w20 }}%;background:#dc2626"></div>
+                </div>
+            </div>
+
+            {# Badges resumo #}
+            <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-bottom:7px">Resumo de Status</div>
+                <div style="display:flex;gap:7px;flex-wrap:wrap">
+                    <span class="badge badge-green">{{ leaderCount }} Líder{% if leaderCount != 1 %}es{% endif %}</span>
+                    <span class="badge badge-amber">{{ warTable|filter(r => r.diff_pct > 0 and r.diff_pct <= 50)|length }} Competitivo</span>
+                    <span class="badge badge-red">{{ warTable|filter(r => r.diff_pct > 50)|length }} Fora</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>{# /bottom-row #}
+
+{% else %}
+{# ═══════════════════════════════════════════════════
+   MODO GERAL — tabela de todas as unidades
+═══════════════════════════════════════════════════ #}
+
+<div class="sec-label">
+    Visão Geral por Unidade
+    <span style="font-size:11px;font-weight:400;color:var(--text-muted)">
+        · {{ filter.dateFrom|date('d/m/Y') }} – {{ filter.dateTo|date('d/m/Y') }}
+        &nbsp;·&nbsp; <span id="lastUpdated2">–</span>
+    </span>
+</div>
+
+<div class="uc-card">
+    <div class="uc-hd">
+        <div class="uc-hd-left">
+            <div class="uc-title">Ranking de Unidades</div>
+            <div class="uc-sub">Selecione uma unidade no filtro acima para ver o diagnóstico completo</div>
+        </div>
+        <button class="btn-csv" onclick="exportTableToCSV('overviewTable','unidades-overview.csv')">
+            <i class="bi bi-download"></i> CSV
+        </button>
+    </div>
+    {% if unitsOverview is empty %}
+    <div style="padding:40px;text-align:center;color:var(--text-muted)">
+        <i class="bi bi-building" style="font-size:28px;display:block;margin-bottom:8px"></i>
+        Nenhuma unidade encontrada para o período.
+    </div>
+    {% else %}
+    <div style="overflow-x:auto">
+        <table class="data-table" id="overviewTable">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Unidade / Empresa</th>
+                    <th>Cidade/UF</th>
+                    <th>Rating</th>
+                    <th>Procedimentos</th>
+                    <th>Preço Médio</th>
+                    <th>Mínimo</th>
+                    <th>Máximo</th>
+                    <th>Snapshots</th>
+                    <th>Última Coleta</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for i, u in unitsOverview %}
+                <tr>
+                    <td class="muted mono">{{ i+1 }}</td>
+                    <td>
+                        <div style="font-weight:600;color:var(--text-primary)">{{ u.unit_name }}</div>
+                        {% if u.social_name is defined and u.social_name and u.social_name != u.unit_name %}
+                        <div style="font-size:11px;color:var(--text-muted)">{{ u.social_name }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="muted">
+                        {% if u.city is defined and u.city %}{{ u.city }}{% if u.state is defined and u.state %} · {{ u.state }}{% endif %}{% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if u.rating_avg is defined and u.rating_avg %}
+                            {% set r = u.rating_avg|round(1) %}
+                            <span class="star-rating">{% for j in 1..5 %}{% if j <= r %}★{% else %}☆{% endif %}{% endfor %}</span>
+                            <span style="font-size:11px;color:var(--text-muted);margin-left:3px">{{ r }}</span>
+                        {% else %}<span class="muted">—</span>{% endif %}
+                    </td>
+                    <td>
+                        <div class="ranking-bar-wrap">
+                            <span class="mono" style="font-weight:600;min-width:28px">{{ u.procedures_count }}</span>
+                            {% set maxC = unitsOverview[0].procedures_count > 0 ? unitsOverview[0].procedures_count : 1 %}
+                            {% set bw = (u.procedures_count / maxC * 90) %}
+                            {% set bw = bw > 90 ? 90 : bw %}
+                            <div class="ranking-bar {{ i == 0 ? 'best' : '' }}" style="width:{{ bw }}px"></div>
+                        </div>
+                    </td>
+                    <td class="mono" style="font-weight:600">R$ {{ u.avg_price|number_format(2,',','.') }}</td>
+                    <td class="mono" style="color:var(--green)">R$ {{ u.min_price|number_format(2,',','.') }}</td>
+                    <td class="mono" style="color:var(--red)">R$ {{ u.max_price|number_format(2,',','.') }}</td>
+                    <td class="muted mono">{{ u.total_snapshots }}</td>
+                    <td class="muted mono">
+                        {% if u.last_collected is defined and u.last_collected %}{{ u.last_collected|date('d/m/Y') }}{% else %}—{% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ path('unit_comparison_index', {unit_id: u.id, date_from: filter.dateFrom, date_to: filter.dateTo}) }}"
+                           style="font-size:11px;color:var(--brand);font-weight:600;text-decoration:none;white-space:nowrap">
+                            <i class="bi bi-search"></i> Diagnóstico
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+{# Ranking por exame (se procedureId selecionado) #}
+{% if procedureId and unitRanking is not empty %}
+<div class="sec-label" style="margin-top:4px">
+    Comparativo por Exame:
+    <span style="font-size:11px;font-weight:600;color:var(--brand);font-style:normal">{{ selectedProcedure.name ?? '' }}</span>
+</div>
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:14px">
+
+    <div class="uc-card">
+        <div class="uc-hd">
+            <div class="uc-hd-left">
+                <div class="uc-title">Ranking de Preço</div>
+                <div class="uc-sub">Menor → Maior preço médio</div>
+            </div>
+        </div>
+        <div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+            <table class="data-table" id="rankingTable">
+                <thead><tr><th>#</th><th>Unidade</th><th>Preço Médio</th><th>Mín/Máx</th></tr></thead>
+                <tbody>
+                {% for i, u in unitRanking %}
+                    {% set maxRankW = unitRanking|last %}
+                    <tr>
+                        <td class="mono" style="font-weight:700;color:{% if i==0 %}var(--green){% elseif i==(unitRanking|length-1) %}var(--red){% else %}var(--text-muted){% endif %}">
+                            {{ i+1 }}
+                        </td>
+                        <td>
+                            <div style="font-size:12.5px;font-weight:500">{{ u.unit_name }}</div>
+                            {% if u.city is defined and u.city %}<div style="font-size:10px;color:var(--text-muted)">{{ u.city }}</div>{% endif %}
+                            <div class="ranking-bar-wrap" style="margin-top:4px">
+                                {% set maxRW = maxRankW.avg_price > 0 ? maxRankW.avg_price : 1 %}
+                                {% set bwR = (u.avg_price / maxRW * 90) %}
+                                {% set bwR = bwR > 90 ? 90 : bwR %}
+                                <div class="ranking-bar {{ i==0 ? 'best' : (i==(unitRanking|length-1) ? 'worst' : '') }}" style="width:{{ bwR }}px"></div>
+                            </div>
+                        </td>
+                        <td class="mono" style="font-weight:700;color:{% if i==0 %}var(--green){% elseif i==(unitRanking|length-1) %}var(--red){% else %}var(--text-primary){% endif %}">
+                            R$ {{ u.avg_price|number_format(2,',','.') }}
+                        </td>
+                        <td style="font-size:11px">
+                            <span style="color:var(--green)">{{ u.min_price|number_format(2,',','.') }}</span>
+                            <span style="color:var(--text-muted)"> / </span>
+                            <span style="color:var(--red)">{{ u.max_price|number_format(2,',','.') }}</span>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="uc-card">
+        <div class="uc-hd">
+            <div class="uc-hd-left">
+                <div class="uc-title">Evolução Comparativa</div>
+                <div class="uc-sub">Top 8 unidades · preço médio por dia</div>
+            </div>
+        </div>
+        <div style="padding:14px 16px">
+            <div style="height:360px"><canvas id="multilineChart"></canvas></div>
+        </div>
+    </div>
+
+</div>
+{% endif %}
+
+{% endif %}{# /unitId #}
+
+</div>{# /uc-wrap #}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size   = 11;
+Chart.defaults.color       = '#9399ad';
+
+const fmtD = d => { if(!d) return ''; const p=d.split('-'); return p[2]+'/'+p[1]; };
+const fmtR = v => 'R$ ' + (+v).toFixed(2).replace('.',',');
+
+{% if unitId %}
+
+// ── Gauge ────────────────────────────────────────────────────────────────────
+const ci  = {{ competIdx|default(0) }};
+const gc  = document.getElementById('gaugeChart');
+if (gc) {
+    const col = ci >= 70 ? '#059669' : ci >= 40 ? '#d97706' : '#dc2626';
+    new Chart(gc.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [ci, 100 - ci],
+                backgroundColor: [col, '#e5e7eb'],
+                borderWidth: 0,
+                circumference: 180,
+                rotation: -90,
+            }],
+        },
+        options: {
+            responsive:true, maintainAspectRatio:false,
+            cutout:'72%',
+            plugins:{ legend:{display:false}, tooltip:{enabled:false} },
+        },
+    });
+}
+
+// ── Scatter Posicionamento Relativo ──────────────────────────────────────────
+const scRaw = {{ scatterData|raw }};
+const scEl  = document.getElementById('scatterChart');
+if (scEl && scRaw.length) {
+    new Chart(scEl.getContext('2d'), {
+        type: 'bubble',
+        data: {
+            datasets: [
+                {
+                    label:'Outras unidades',
+                    data: scRaw.filter(p=>!p.is_selected).map(p=>({x:p.x,y:p.y,r:p.r,label:p.label})),
+                    backgroundColor:'rgba(148,163,184,.4)',
+                    borderColor:'rgba(148,163,184,.65)',
+                    borderWidth:1,
+                },
+                {
+                    label:'Unidade selecionada',
+                    data: scRaw.filter(p=>p.is_selected).map(p=>({x:p.x,y:p.y,r:p.r,label:p.label})),
+                    backgroundColor:'rgba(37,99,235,.55)',
+                    borderColor:'#2563eb',
+                    borderWidth:2,
+                },
+            ],
+        },
+        options: {
+            responsive:true, maintainAspectRatio:false,
+            plugins: {
+                legend:{display:false},
+                tooltip:{
+                    backgroundColor:'#1a1d2e',titleColor:'#e2e8f0',bodyColor:'#9399ad',
+                    borderColor:'#2d3251',borderWidth:1,padding:9,
+                    callbacks:{
+                        title: i => i[0].raw.label||'',
+                        label: c => [` Preço: ${fmtR(c.parsed.x)}`,` Dist. mín: +${c.parsed.y.toFixed(1)}%`],
+                    },
+                },
+            },
+            scales:{
+                x:{grid:{color:'#f0f2f8'},ticks:{color:'#9399ad',callback:v=>fmtR(v)},
+                   title:{display:true,text:'Preço (R$)',color:'#9399ad',font:{size:10}}},
+                y:{grid:{color:'#f0f2f8'},ticks:{color:'#9399ad',callback:v=>v+'%'},
+                   title:{display:true,text:'Distância do Mínimo (%)',color:'#9399ad',font:{size:10}}},
+            },
+        },
+    });
+}
+
+// ── Evolução 7 dias — unidade vs mercado ─────────────────────────────────────
+const tw7L  = {{ trendUnit.labels|raw }};
+const tw7U  = {{ trendUnit.unit_values|raw }};
+const tw7M  = {{ trendUnit.market_values|raw }};
+const twEl  = document.getElementById('trendUnitChart');
+if (twEl && tw7L.length) {
+    const ctx7  = twEl.getContext('2d');
+    const grad7 = ctx7.createLinearGradient(0,0,0,230);
+    grad7.addColorStop(0,'rgba(37,99,235,.14)');
+    grad7.addColorStop(1,'rgba(37,99,235,0)');
+    new Chart(ctx7,{
+        type:'line',
+        data:{
+            labels:tw7L.map(fmtD),
+            datasets:[
+                {
+                    label:'Preço Unidade',
+                    data:tw7U,
+                    borderColor:'#2563eb',
+                    backgroundColor:grad7,
+                    borderWidth:2.5,
+                    pointRadius:4,pointHoverRadius:6,
+                    pointBackgroundColor:'#2563eb',pointBorderColor:'#fff',pointBorderWidth:2,
+                    tension:0.35,fill:true,
+                },
+                {
+                    label:'Preço Médio Mercado',
+                    data:tw7M,
+                    borderColor:'#9ca3af',
+                    backgroundColor:'transparent',
+                    borderWidth:1.5,borderDash:[5,3],
+                    pointRadius:3,pointHoverRadius:5,
+                    tension:0.35,
+                },
+            ],
+        },
+        options:{
+            responsive:true,maintainAspectRatio:false,
+            interaction:{mode:'index',intersect:false},
+            plugins:{
+                legend:{display:false},
+                tooltip:{
+                    backgroundColor:'#1a1d2e',titleColor:'#e2e8f0',bodyColor:'#9399ad',
+                    borderColor:'#2d3251',borderWidth:1,padding:10,
+                    callbacks:{label:c=>` ${fmtR(c.parsed.y)} — ${c.dataset.label}`},
+                },
+            },
+            scales:{
+                x:{grid:{display:false},ticks:{color:'#9399ad'}},
+                y:{grid:{color:'#f0f2f8'},ticks:{color:'#9399ad',callback:v=>fmtR(v)}},
+            },
+        },
+    });
+}
+
+// timestamp
+const now = new Date();
+const ts  = document.getElementById('ucTs');
+if (ts) ts.textContent =
+    now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+
+{% else %}
+
+// modo geral — multiline se houver
+{% if procedureId and unitRanking is not empty %}
+const mlLabels  = {{ multilineLabels|raw }};
+const mlSeries  = {{ multilineSeries|raw }};
+const palette   = ['#2563eb','#059669','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#64748b'];
+const mlDatasets = mlSeries.map((s,i)=>({
+    label:s.name,
+    data:mlLabels.map(d=>s.data[d]??null),
+    borderColor:palette[i%palette.length],
+    backgroundColor:'transparent',
+    borderWidth:2,
+    pointRadius:mlLabels.length>30?0:3,
+    pointHoverRadius:5,
+    tension:0.35,
+    spanGaps:true,
+}));
+new Chart(document.getElementById('multilineChart'),{
+    type:'line',
+    data:{labels:mlLabels.map(fmtD),datasets:mlDatasets},
+    options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+            legend:{position:'bottom',labels:{color:'#5a6072',font:{size:11},padding:10,boxWidth:10,usePointStyle:true}},
+            tooltip:{backgroundColor:'#1a1d2e',titleColor:'#e2e8f0',bodyColor:'#9399ad',borderColor:'#2d3251',borderWidth:1,padding:10,
+                callbacks:{label:c=>` R$ ${(+c.parsed.y).toFixed(2).replace('.',',')} — ${c.dataset.label}`}},
+        },
+        scales:{
+            x:{grid:{color:'#f0f2f8'},ticks:{maxTicksLimit:10,color:'#9399ad'}},
+            y:{grid:{color:'#f0f2f8'},ticks:{color:'#9399ad',callback:v=>'R$ '+v.toFixed(0)}},
+        },
+    },
+});
+{% endif %}
+
+// timestamp modo geral
+const now2 = new Date();
+const el2  = document.getElementById('lastUpdated2');
+if (el2) el2.textContent = 'Atualizado às '+
+    now2.getHours().toString().padStart(2,'0')+':'+now2.getMinutes().toString().padStart(2,'0');
+
+{% endif %}
+
+AutoRefresh.start(60, () => { window.location.reload(); });
+</script>
+{% endblock %}
