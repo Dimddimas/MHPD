@@ -4,7 +4,7 @@
     "buildCommand": "COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs"
   },
   "deploy": {
-    "startCommand": "touch /app/.env && php -S 0.0.0.0:$PORT -t public",
+    "startCommand": "touch /app/.env && ls -la /app/.env && pwd && php -S 0.0.0.0:$PORT -t public",
     "healthcheckPath": "/",
     "restartPolicyType": "ON_FAILURE"
   }
