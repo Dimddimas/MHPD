@@ -74,19 +74,17 @@
     display: grid;
     grid-template-columns: 1fr 360px;
     gap: 14px;
-    align-items: start;   /* termômetro cresce, sidebar fica no topo */
+    align-items: start;
 }
 @media(max-width:1200px){ .main-row { grid-template-columns:1fr; } }
 
-/* Sidebar: não segue a altura do termômetro */
 .sidebar-fixed {
     display: flex;
     flex-direction: column;
     gap: 14px;
-    align-self: start;    /* não estica com o grid */
+    align-self: start;
 }
 
-/* Termômetro: limita altura e rola internamente */
 .thermo-scroll {
     max-height: 460px;
     overflow-y: auto;
@@ -106,6 +104,9 @@
 .vg-card-hd {
     padding: 12px 16px 10px;
     border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 .vg-card-title {
     font-size: 10.5px;
@@ -114,9 +115,18 @@
     letter-spacing: .07em;
     color: var(--text-secondary);
 }
+.vg-card-hint {
+    font-size: 10px;
+    color: var(--brand, #2563eb);
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s;
+}
+.vg-card:hover .vg-card-hint { opacity: 1; }
 
 /* ═══════════════════════════════════════
-   TERMÔMETRO — faixa min→max preenchida
+   TERMÔMETRO
 ═══════════════════════════════════════ */
 .thermo-list { padding: 12px 18px 8px; display:flex; flex-direction:column; gap:0; }
 .thermo-row {
@@ -126,7 +136,11 @@
     gap: 12px;
     padding: 11px 0;
     border-bottom: 1px solid #f0f2f8;
+    cursor: pointer;
+    transition: background .12s;
+    border-radius: 6px;
 }
+.thermo-row:hover { background: #f8f9fc; }
 .thermo-row:last-child { border-bottom:none; }
 
 .thermo-label-col {
@@ -147,6 +161,7 @@
     font-weight: 700;
     color: var(--brand);
     font-variant-numeric: tabular-nums;
+    cursor: help;
 }
 
 /* Barra */
@@ -156,8 +171,6 @@
     display: flex;
     align-items: center;
 }
-
-/* trilho cinza — ocupa 100% da largura */
 .thermo-track {
     position: absolute;
     left: 0; right: 0;
@@ -165,16 +178,12 @@
     background: #e8ecf5;
     border-radius: 5px;
 }
-
-/* faixa min→max preenchida com gradiente azul→vermelho */
 .thermo-fill {
     position: absolute;
     height: 10px;
     border-radius: 5px;
     background: linear-gradient(to right, #3b82f6, #ef4444);
 }
-
-/* marcador vertical da média */
 .thermo-avg-pin {
     position: absolute;
     width: 3px;
@@ -184,8 +193,6 @@
     top: 50%;
     transform: translate(-50%, -50%);
 }
-
-/* label flutuante da média (acima) */
 .thermo-avg-lbl {
     position: absolute;
     bottom: calc(50% + 13px);
@@ -199,21 +206,15 @@
     padding: 0 2px;
     border-radius: 3px;
 }
-
-/* ponto vermelho no máximo */
 .thermo-max-dot {
-    position: absolute;
-    top: 50%;
     width: 11px;
     height: 11px;
     background: #ef4444;
     border: 2px solid #fff;
     border-radius: 50%;
-    transform: translate(-50%, -50%);
     box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    cursor: help;
 }
-
-/* label do máximo (acima) */
 .thermo-max-lbl {
     position: absolute;
     bottom: calc(50% + 13px);
@@ -226,6 +227,14 @@
     background: rgba(255,255,255,.85);
     padding: 0 2px;
     border-radius: 3px;
+}
+.thermo-bar-wrap .vg-pop {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
 }
 
 /* ═══════════════════════════════════════
@@ -241,6 +250,8 @@
 .rank-table td { padding:8px 12px; border-bottom:1px solid #f0f2f8; }
 .rank-table tr:last-child td { border-bottom:none; }
 .rank-table td:not(:first-child) { text-align:center; font-variant-numeric:tabular-nums; }
+.rank-table tr { cursor: pointer; transition: background .12s; }
+.rank-table tr:hover td { background: #f8f9fc; }
 .rank-score {
     background: var(--brand-light);
     color: var(--brand);
@@ -249,7 +260,7 @@
 }
 
 /* ═══════════════════════════════════════
-   HEATMAP — por faixas de preço
+   HEATMAP
 ═══════════════════════════════════════ */
 .hm-table { width:100%; border-collapse:collapse; }
 .hm-table th {
@@ -281,22 +292,12 @@
     background: var(--surface);
     text-align: left;
     border-right: 1px solid var(--border);
+    cursor: pointer;
 }
-.hm-table td:hover:not(:first-child) { filter: brightness(.93); cursor: default; }
-
-/* célula: mostra preço mínimo da faixa se houver dados */
-.hm-cell-val {
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.3;
-}
-.hm-cell-sub {
-    font-size: 9.5px;
-    opacity: .75;
-    font-weight: 400;
-}
-
-/* cores por intensidade */
+.hm-table td:first-child:hover { background: #f8f9fc; }
+.hm-table td:hover:not(:first-child) { filter: brightness(.93); cursor: pointer; }
+.hm-cell-val { font-size: 11px; font-weight: 700; line-height: 1.3; }
+.hm-cell-sub { font-size: 9.5px; opacity: .75; font-weight: 400; }
 .hm-0  { background:#f0f2f8; color:var(--text-muted); }
 .hm-g1 { background:#d1fae5; color:#065f46; }
 .hm-g2 { background:#6ee7b7; color:#064e3b; }
@@ -308,6 +309,212 @@
 .hm-y1 { background:#fef3c7; color:#92400e; }
 .hm-y2 { background:#fde68a; color:#78350f; }
 .hm-y3 { background:#f59e0b; color:#fff; }
+
+/* ═══════════════════════════════════════
+   KPI CLICKABLE
+═══════════════════════════════════════ */
+.kpi-clickable {
+    cursor: pointer;
+    transition: box-shadow .18s, transform .18s, border-color .18s;
+    position: relative;
+}
+.kpi-clickable:hover {
+    box-shadow: 0 4px 24px rgba(37,99,235,.10);
+    border-color: var(--brand, #2563eb);
+    transform: translateY(-1px);
+}
+.kpi-hint {
+    font-size: 10px;
+    color: var(--brand, #2563eb);
+    opacity: 0;
+    margin-top: 6px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    transition: opacity .15s;
+}
+.kpi-clickable:hover .kpi-hint { opacity: 1; }
+
+/* ═══════════════════════════════════════
+   MODAL BACKDROP
+═══════════════════════════════════════ */
+.vg-modal-backdrop {
+    display: none;
+    position: fixed !important;
+    top: 0 !important; left: 0 !important;
+    right: 0 !important; bottom: 0 !important;
+    z-index: 9999 !important;
+    background: rgba(10,12,28,.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.vg-modal-backdrop.is-open {
+    display: flex;
+    animation: backdropIn .2s ease;
+    overflow: hidden;
+}
+@keyframes backdropIn { from { opacity:0; } to { opacity:1; } }
+body.modal-open { overflow: hidden; }
+
+/* ═══════════════════════════════════════
+   MODAL
+═══════════════════════════════════════ */
+.vg-modal {
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 16px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.22);
+    width: 100%;
+    max-width: 580px;
+    max-height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalIn .22s cubic-bezier(.34,1.3,.64,1);
+    position: relative;
+    z-index: 1;
+}
+.vg-modal.vg-modal-wide { max-width: 720px; }
+@keyframes modalIn {
+    from { opacity:0; transform: scale(.96) translateY(8px); }
+    to   { opacity:1; transform: scale(1)   translateY(0); }
+}
+.vg-modal-hd {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.vg-modal-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--brand, #2563eb); margin-bottom: 4px;
+}
+.vg-modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.vg-modal-close {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    width: 32px; height: 32px; cursor: pointer; color: var(--text-muted);
+    font-size: 13px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background .15s, color .15s; margin-left: 16px;
+}
+.vg-modal-close:hover { background: var(--border); color: var(--text-primary); }
+.vg-modal-body {
+    padding: 20px 24px 24px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+.vg-modal-stat-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 4px;
+}
+.vg-modal-stat {
+    background: var(--bg, #f8f9fc); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; text-align: center;
+}
+.vg-modal-stat-val {
+    font-size: 22px; font-weight: 700; color: var(--text-primary);
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+}
+.vg-modal-stat-lbl {
+    font-size: 10px; color: var(--text-muted); margin-top: 4px;
+    text-transform: uppercase; letter-spacing: .05em; font-weight: 600;
+}
+.vg-modal-divider { height: 1px; background: var(--border); margin: 18px 0 16px; }
+.vg-modal-sub-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); margin-bottom: 10px;
+}
+.vg-modal-note { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 4px; }
+.vg-modal-highlight {
+    background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+    border: 1px solid #bfdbfe; border-radius: 12px; padding: 18px 20px;
+}
+.vg-modal-highlight-name { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+.vg-modal-highlight-range {
+    font-size: 22px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums;
+}
+.vg-arrow { color: var(--text-muted); margin: 0 6px; font-weight: 400; }
+.vg-modal-highlight-badge {
+    display: inline-block; margin-top: 10px; background: #fef3c7; color: #b45309;
+    font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 20px; border: 1px solid #fde68a;
+}
+.vg-modal-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.vg-modal-table th {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-muted); padding: 7px 10px; border-bottom: 1px solid var(--border);
+    text-align: left; white-space: nowrap;
+}
+.vg-modal-table td {
+    padding: 9px 10px; border-bottom: 1px solid #f0f2f8; color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.vg-modal-table tr:last-child td { border-bottom: none; }
+.vg-modal-table tr:hover td { background: var(--bg, #f8f9fc); }
+.vg-disp-badge {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px;
+}
+.disp-high { background: #fee2e2; color: #991b1b; }
+.disp-mid  { background: #fef3c7; color: #92400e; }
+.disp-low  { background: #d1fae5; color: #065f46; }
+
+/* ── Scroll list ── */
+.vg-modal-scroll-list {
+    max-height: 280px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5e8 transparent;
+}
+.vg-modal-scroll-list::-webkit-scrollbar { width: 3px; }
+.vg-modal-scroll-list::-webkit-scrollbar-track { background: transparent; }
+.vg-modal-scroll-list::-webkit-scrollbar-thumb { background: #d1d5e8; border-radius: 99px; }
+.vg-modal-list-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 4px 9px 0; border-bottom: 1px solid #f0f2f8;
+}
+.vg-modal-list-row:last-child { border-bottom: none; }
+.vg-modal-list-name { font-size: 13px; color: var(--text-primary); font-weight: 500; }
+.vg-modal-list-val {
+    font-size: 12px; font-weight: 700; color: var(--brand, #2563eb);
+    background: var(--brand-light, #eff6ff); padding: 2px 10px;
+    border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+}
+
+/* ── Popover ── */
+.vg-pop { position: relative; display: inline-flex; align-items: center; }
+.vg-pop-trigger { cursor: help; }
+.vg-popover {
+    display: none;
+    position: fixed;
+    z-index: 99999;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.14);
+    padding: 14px 16px;
+    min-width: 240px;
+    max-width: 320px;
+    font-size: 12.5px;
+    color: var(--text-primary, #111);
+    pointer-events: none;
+    animation: popIn .15s ease;
+}
+@keyframes popIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+.vg-popover-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted, #9399ad); margin-bottom: 8px;
+}
+.vg-popover-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 0; border-bottom: 1px solid #f0f2f8; font-size: 12px;
+}
+.vg-popover-row:last-child { border-bottom: none; }
+.vg-popover-badge {
+    font-size: 11px; font-weight: 700; color: var(--brand, #2563eb);
+    background: var(--brand-light, #eff6ff); padding: 1px 8px; border-radius: 8px; white-space: nowrap;
+}
 </style>
 {% endblock %}
 
@@ -319,21 +526,30 @@
 ══════════════════════════════════════════════════════ #}
 <div class="kpi-row">
 
-    <div class="kpi-card">
-        <div class="kpi-label">Unidades Ativas no Radar</div>
-        <div class="kpi-value-xl">{{ kpi.units_today|default(0) }}</div>
-        <div class="kpi-sub">Unidades Monitoradas Hoje</div>
-        <div class="kpi-sub-green">+0 desde a última semana</div>
+    <div class="kpi-card kpi-clickable" data-modal="modal-labs">
+        <div class="kpi-label">Laboratórios Ativos no Radar</div>
+        <div class="kpi-value-xl">{{ kpi.labs_today|default(0) }}</div>
+        <div class="kpi-sub">Redes monitoradas hoje</div>
+        {% set delta = kpi.labs_delta|default(0) %}
+        {% if delta > 0 %}
+            <div class="kpi-sub-green">+{{ delta }} vs. semana anterior</div>
+        {% elseif delta < 0 %}
+            <div class="kpi-sub" style="color:#ef4444;font-weight:600">{{ delta }} vs. semana anterior</div>
+        {% else %}
+            <div class="kpi-sub">Estável vs. semana anterior</div>
+        {% endif %}
+        <div class="kpi-hint">Ver detalhes →</div>
     </div>
 
-    <div class="kpi-card">
+    <div class="kpi-card kpi-clickable" data-modal="modal-procedures">
         <div class="kpi-label">Procedimentos Monitorados</div>
         <div class="kpi-value-xl">{{ kpi.procedures_today|default(0) }}</div>
         <div class="kpi-sub">Procedimentos Estratégicos</div>
         <div class="kpi-sub" style="color:var(--text-muted)">Laboratoriais – Curitiba</div>
+        <div class="kpi-hint">Ver detalhes →</div>
     </div>
 
-    <div class="kpi-card">
+    <div class="kpi-card kpi-clickable" data-modal="modal-dispersion">
         <div class="kpi-label">Maior Dispersão de Preço</div>
         <div class="kpi-value-md">
             {{ kpi.max_dispersion_name|default('—')|slice(0,22) }}{% if (kpi.max_dispersion_name|default('')|length) > 22 %}…{% endif %}
@@ -347,9 +563,10 @@
         {% if kpi.max_dispersion_pct is defined and kpi.max_dispersion_pct %}
         <span class="kpi-badge-disp">Dispersão: {{ kpi.max_dispersion_pct|number_format(0) }}%</span>
         {% endif %}
+        <div class="kpi-hint">Ver detalhes →</div>
     </div>
 
-    <div class="kpi-card">
+    <div class="kpi-card kpi-clickable" data-modal="modal-cheapest">
         <div class="kpi-label">Menor Preço do Dia</div>
         <div class="kpi-value-md" style="font-size:16px;margin-top:6px;color:var(--text-secondary)">
             {{ kpi.cheapest_name|default('—')|slice(0,20) }}
@@ -359,9 +576,10 @@
                 R$ {{ kpi.cheapest_price|number_format(2,',','.') }}
             {% else %}—{% endif %}
         </div>
+        <div class="kpi-hint">Ver detalhes →</div>
     </div>
 
-    <div class="kpi-card">
+    <div class="kpi-card kpi-clickable" data-modal="modal-arbitrage">
         <div class="kpi-label">Oportunidade de Arbitragem</div>
         <div class="kpi-sub" style="margin-top:8px;line-height:1.5;color:var(--text-secondary)">
             Diferença média entre menor e maior preço:
@@ -371,6 +589,7 @@
                 +{{ kpi.max_dispersion_pct|number_format(0) }}%
             {% else %}—{% endif %}
         </div>
+        <div class="kpi-hint">Ver detalhes →</div>
     </div>
 
 </div>
@@ -384,6 +603,7 @@
     <div class="vg-card">
         <div class="vg-card-hd">
             <div class="vg-card-title">Termômetro de Mercado</div>
+            <span class="vg-card-hint" data-modal="modal-procedures">Ver todos →</span>
         </div>
         {% if thermoData is empty %}
         <div style="padding:40px;text-align:center;color:var(--text-muted)">
@@ -392,7 +612,6 @@
         </div>
         {% else %}
 
-        {# Escala global pelo max absoluto de todos os exames #}
         {% set globalMax = 1 %}
         {% set globalMin = 999999 %}
         {% for row in thermoData|slice(0,15) %}
@@ -402,51 +621,54 @@
         {% set globalRange = globalMax - globalMin %}
         {% if globalRange < 1 %}{% set globalRange = 1 %}{% endif %}
 
-        {# Margem lateral de 3% para os labels não cortarem #}
         {% set margin = 3 %}
         {% set usable  = 100 - (margin * 2) %}
 
         <div class="thermo-scroll"><div class="thermo-list">
         {% for row in thermoData|slice(0,15) %}
-            {# posição em % dentro da área útil #}
             {% set minPct  = margin + ((row.min_price  - globalMin) / globalRange * usable)|round %}
             {% set avgPct  = margin + ((row.avg_price  - globalMin) / globalRange * usable)|round %}
             {% set maxPct  = margin + ((row.max_price  - globalMin) / globalRange * usable)|round %}
             {% set fillW   = maxPct - minPct %}
+            {% set pid = row.procedure_id %}
 
-            <div class="thermo-row">
-                {# Nome + preço mínimo #}
+            <div class="thermo-row" data-modal="modal-proc-{{ pid }}">
                 <div class="thermo-label-col">
                     <div class="thermo-name" title="{{ row.name }}">
                         {{ row.name|slice(0,16) }}{% if row.name|length > 16 %}…{% endif %}
                     </div>
-                    <div class="thermo-min-lbl">R$ {{ row.min_price|number_format(2,',','.') }}</div>
+                    <span class="vg-pop">
+                        <span class="vg-pop-trigger thermo-min-lbl">R$ {{ row.min_price|number_format(2,',','.') }}</span>
+                        <span class="vg-popover">
+                            <div class="vg-popover-title">Menor preço</div>
+                            <div class="vg-popover-row">
+                                <span>{{ procPriceDetails[pid].min_lab|default('—')|slice(0,26) }}</span>
+                                <span class="vg-popover-badge">R$ {{ row.min_price|number_format(2,',','.') }}</span>
+                            </div>
+                        </span>
+                    </span>
                 </div>
 
-                {# Barra #}
                 <div class="thermo-bar-wrap">
-                    {# trilho cinza #}
                     <div class="thermo-track"></div>
-
-                    {# faixa colorida min→max #}
-                    <div class="thermo-fill"
-                         style="left:{{ minPct }}%;width:{{ fillW > 1 ? fillW : 1 }}%"></div>
-
-                    {# label média (acima) #}
-                    <span class="thermo-avg-lbl" style="left:{{ avgPct }}%">
-                        R$ {{ row.avg_price|number_format(2,',','.') }}
-                    </span>
-                    {# pino da média #}
+                    <div class="thermo-fill" style="left:{{ minPct }}%;width:{{ fillW > 1 ? fillW : 1 }}%"></div>
+                    <span class="thermo-avg-lbl" style="left:{{ avgPct }}%">R$ {{ row.avg_price|number_format(2,',','.') }}</span>
                     <div class="thermo-avg-pin" style="left:{{ avgPct }}%"></div>
-
-                    {# label máximo (acima) — só se distante o suficiente da média #}
                     {% if (maxPct - avgPct) > 8 %}
-                    <span class="thermo-max-lbl" style="left:{{ maxPct }}%">
-                        R$ {{ row.max_price|number_format(2,',','.') }}
-                    </span>
+                    <span class="thermo-max-lbl" style="left:{{ maxPct }}%">R$ {{ row.max_price|number_format(2,',','.') }}</span>
                     {% endif %}
-                    {# ponto vermelho no máximo #}
-                    <div class="thermo-max-dot" style="left:{{ maxPct }}%"></div>
+                    <span class="vg-pop" style="left:{{ maxPct }}%;top:50%;transform:translate(-50%,-50%)">
+                        <span class="vg-pop-trigger">
+                            <div class="thermo-max-dot"></div>
+                        </span>
+                        <span class="vg-popover">
+                            <div class="vg-popover-title">Maior preço</div>
+                            <div class="vg-popover-row">
+                                <span>{{ procPriceDetails[pid].max_lab|default('—')|slice(0,26) }}</span>
+                                <span class="vg-popover-badge">R$ {{ row.max_price|number_format(2,',','.') }}</span>
+                            </div>
+                        </span>
+                    </span>
                 </div>
             </div>
         {% endfor %}
@@ -457,16 +679,14 @@
     {# ── Sidebar ── #}
     <div class="sidebar-fixed">
 
-        {# Tendência Semanal — altura aumentada #}
         <div class="vg-card">
             <div class="vg-card-hd">
                 <div class="vg-card-title">Tendência Semanal</div>
+                <span class="vg-card-hint" data-modal="modal-trend">Ver detalhes →</span>
             </div>
             <div style="padding:14px 16px 10px">
-                <div style="display:flex;gap:10px;align-items:stretch">
-                    <div style="flex:1;height:200px">
-                        <canvas id="trendChart"></canvas>
-                    </div>
+                <div style="height:200px">
+                    <canvas id="trendChart"></canvas>
                 </div>
                 <div style="text-align:center;font-size:10px;color:var(--text-muted);margin-top:8px">
                     Últimos 7 dias
@@ -474,10 +694,10 @@
             </div>
         </div>
 
-        {# Ranking de Competitividade #}
         <div class="vg-card">
             <div class="vg-card-hd">
                 <div class="vg-card-title">Ranking de Competitividade</div>
+                <span class="vg-card-hint" data-modal="modal-ranking">Ver todos →</span>
             </div>
             {% if competitiveness is empty %}
             <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">Sem dados hoje.</div>
@@ -486,14 +706,14 @@
                 <thead>
                     <tr>
                         <th>Unidade</th>
-                        <th>Nº de proc.<br>menor preço</th>
+                        <th>Nº proc.<br>menor preço</th>
                         <th>Índice<br>Comp.</th>
                     </tr>
                 </thead>
                 <tbody>
                 {% set maxLeads = competitiveness[0].qtd_liderancas %}
                 {% for u in competitiveness|slice(0,6) %}
-                <tr>
+                <tr data-modal="modal-lab-{{ loop.index0 }}" style="cursor:pointer">
                     <td style="font-weight:500">
                         {{ u.facility_name|default('—')|slice(0,18) }}{% if (u.facility_name|default('')|length) > 18 %}…{% endif %}
                     </td>
@@ -513,29 +733,17 @@
 </div>
 
 {# ══════════════════════════════════════════════════════
-   HEATMAP — por faixas de preço (como no Gemini)
+   HEATMAP
 ══════════════════════════════════════════════════════ #}
 <div class="vg-card">
     <div class="vg-card-hd">
         <div class="vg-card-title">Dispersão de Preços por Procedimento</div>
+        <span class="vg-card-hint" data-modal="modal-dispersion">Ver ranking →</span>
     </div>
     <div style="overflow-x:auto">
     {% if heatmap is empty %}
     <div style="padding:30px;text-align:center;color:var(--text-muted)">Sem dados para o heatmap hoje.</div>
     {% else %}
-
-    {#
-        Faixas de preço fixas:
-        Faixa A: R$ 0–10
-        Faixa B: R$ 11–30
-        Faixa C: R$ 31–50
-        Faixa D: R$ 50+
-
-        Para cada procedimento + faixa:
-        - Verifica se min, avg ou max caem nessa faixa
-        - Intensidade da cor = proporcional ao quanto do preço está na faixa
-    #}
-
     <table class="hm-table">
         <thead>
             <tr>
@@ -552,98 +760,38 @@
             {% set mn  = row.min|default(0) %}
             {% set av  = row.avg|default(0) %}
             {% set mx  = row.max|default(0) %}
-            {% set dsp = row.disp|default(0) %}
 
-            {# Determina cor de cada faixa baseada em se a média cai ali #}
-            {# Verde = preço baixo (bom para paciente), vermelho = preço alto, amarelo = médio #}
+            {% if av <= 10 %}{% set fa_class = 'hm-g4' %}{% set fa_val = 'R$ ' ~ mn|number_format(2,',','.') %}{% set fa_sub = 'mín' %}
+            {% elseif mn <= 10 %}{% set fa_class = 'hm-g2' %}{% set fa_val = 'R$ ' ~ mn|number_format(2,',','.') %}{% set fa_sub = 'mín' %}
+            {% else %}{% set fa_class = 'hm-0' %}{% set fa_val = '—' %}{% set fa_sub = '' %}{% endif %}
 
-            {# Faixa A: 0-10 #}
-            {% if av <= 10 %}
-                {% set fa_class = 'hm-g4' %}
-                {% set fa_val = 'R$ ' ~ mn|number_format(2,',','.') %}
-                {% set fa_sub = 'mín' %}
-            {% elseif mn <= 10 %}
-                {% set fa_class = 'hm-g2' %}
-                {% set fa_val = 'R$ ' ~ mn|number_format(2,',','.') %}
-                {% set fa_sub = 'mín' %}
-            {% else %}
-                {% set fa_class = 'hm-0' %}
-                {% set fa_val = '—' %}
-                {% set fa_sub = '' %}
-            {% endif %}
+            {% if av > 10 and av <= 30 %}{% set fb_class = 'hm-y2' %}{% set fb_val = 'R$ ' ~ av|number_format(2,',','.') %}{% set fb_sub = 'média' %}
+            {% elseif mn > 10 and mn <= 30 %}{% set fb_class = 'hm-y1' %}{% set fb_val = 'R$ ' ~ mn|number_format(2,',','.') %}{% set fb_sub = 'mín' %}
+            {% elseif mx > 10 and mx <= 30 %}{% set fb_class = 'hm-y1' %}{% set fb_val = 'R$ ' ~ mx|number_format(2,',','.') %}{% set fb_sub = 'máx' %}
+            {% else %}{% set fb_class = 'hm-0' %}{% set fb_val = '—' %}{% set fb_sub = '' %}{% endif %}
 
-            {# Faixa B: 11-30 #}
-            {% if av > 10 and av <= 30 %}
-                {% set fb_class = 'hm-y2' %}
-                {% set fb_val = 'R$ ' ~ av|number_format(2,',','.') %}
-                {% set fb_sub = 'média' %}
-            {% elseif mn > 10 and mn <= 30 %}
-                {% set fb_class = 'hm-y1' %}
-                {% set fb_val = 'R$ ' ~ mn|number_format(2,',','.') %}
-                {% set fb_sub = 'mín' %}
-            {% elseif mx > 10 and mx <= 30 %}
-                {% set fb_class = 'hm-y1' %}
-                {% set fb_val = 'R$ ' ~ mx|number_format(2,',','.') %}
-                {% set fb_sub = 'máx' %}
-            {% else %}
-                {% set fb_class = 'hm-0' %}
-                {% set fb_val = '—' %}
-                {% set fb_sub = '' %}
-            {% endif %}
+            {% if av > 30 and av <= 50 %}{% set fc_class = 'hm-r2' %}{% set fc_val = 'R$ ' ~ av|number_format(2,',','.') %}{% set fc_sub = 'média' %}
+            {% elseif mx > 30 and mx <= 50 %}{% set fc_class = 'hm-r1' %}{% set fc_val = 'R$ ' ~ mx|number_format(2,',','.') %}{% set fc_sub = 'máx' %}
+            {% else %}{% set fc_class = 'hm-0' %}{% set fc_val = '—' %}{% set fc_sub = '' %}{% endif %}
 
-            {# Faixa C: 31-50 #}
-            {% if av > 30 and av <= 50 %}
-                {% set fc_class = 'hm-r2' %}
-                {% set fc_val = 'R$ ' ~ av|number_format(2,',','.') %}
-                {% set fc_sub = 'média' %}
-            {% elseif mx > 30 and mx <= 50 %}
-                {% set fc_class = 'hm-r1' %}
-                {% set fc_val = 'R$ ' ~ mx|number_format(2,',','.') %}
-                {% set fc_sub = 'máx' %}
-            {% else %}
-                {% set fc_class = 'hm-0' %}
-                {% set fc_val = '—' %}
-                {% set fc_sub = '' %}
-            {% endif %}
-
-            {# Faixa D: 50+ #}
-            {% if mx > 50 %}
-                {% set fd_class = av > 50 ? 'hm-r3' : 'hm-r1' %}
-                {% set fd_val = 'R$ ' ~ mx|number_format(2,',','.') %}
-                {% set fd_sub = 'máx' %}
-            {% else %}
-                {% set fd_class = 'hm-0' %}
-                {% set fd_val = '—' %}
-                {% set fd_sub = '' %}
-            {% endif %}
+            {% if mx > 50 %}{% set fd_class = av > 50 ? 'hm-r3' : 'hm-r1' %}{% set fd_val = 'R$ ' ~ mx|number_format(2,',','.') %}{% set fd_sub = 'máx' %}
+            {% else %}{% set fd_class = 'hm-0' %}{% set fd_val = '—' %}{% set fd_sub = '' %}{% endif %}
 
             <tr>
-                <td title="{{ procName }}">
+                <td title="{{ procName }}" data-modal="modal-proc-{{ procId }}">
                     {{ procName|slice(0,24) }}{% if procName|length > 24 %}…{% endif %}
                 </td>
-                <td class="{{ fa_class }}">
-                    {% if fa_val != '—' %}
-                    <div class="hm-cell-val">{{ fa_val }}</div>
-                    {% if fa_sub %}<div class="hm-cell-sub">{{ fa_sub }}</div>{% endif %}
-                    {% else %}—{% endif %}
+                <td class="{{ fa_class }}" data-modal="modal-proc-{{ procId }}" style="cursor:pointer">
+                    {% if fa_val != '—' %}<div class="hm-cell-val">{{ fa_val }}</div>{% if fa_sub %}<div class="hm-cell-sub">{{ fa_sub }}</div>{% endif %}{% else %}—{% endif %}
                 </td>
-                <td class="{{ fb_class }}">
-                    {% if fb_val != '—' %}
-                    <div class="hm-cell-val">{{ fb_val }}</div>
-                    {% if fb_sub %}<div class="hm-cell-sub">{{ fb_sub }}</div>{% endif %}
-                    {% else %}—{% endif %}
+                <td class="{{ fb_class }}" data-modal="modal-proc-{{ procId }}" style="cursor:pointer">
+                    {% if fb_val != '—' %}<div class="hm-cell-val">{{ fb_val }}</div>{% if fb_sub %}<div class="hm-cell-sub">{{ fb_sub }}</div>{% endif %}{% else %}—{% endif %}
                 </td>
-                <td class="{{ fc_class }}">
-                    {% if fc_val != '—' %}
-                    <div class="hm-cell-val">{{ fc_val }}</div>
-                    {% if fc_sub %}<div class="hm-cell-sub">{{ fc_sub }}</div>{% endif %}
-                    {% else %}—{% endif %}
+                <td class="{{ fc_class }}" data-modal="modal-proc-{{ fc_class != 'hm-0' ? procId : '' }}" style="cursor:pointer">
+                    {% if fc_val != '—' %}<div class="hm-cell-val">{{ fc_val }}</div>{% if fc_sub %}<div class="hm-cell-sub">{{ fc_sub }}</div>{% endif %}{% else %}—{% endif %}
                 </td>
-                <td class="{{ fd_class }}">
-                    {% if fd_val != '—' %}
-                    <div class="hm-cell-val">{{ fd_val }}</div>
-                    {% if fd_sub %}<div class="hm-cell-sub">{{ fd_sub }}</div>{% endif %}
-                    {% else %}—{% endif %}
+                <td class="{{ fd_class }}" data-modal="modal-proc-{{ fd_class != 'hm-0' ? procId : '' }}" style="cursor:pointer">
+                    {% if fd_val != '—' %}<div class="hm-cell-val">{{ fd_val }}</div>{% if fd_sub %}<div class="hm-cell-sub">{{ fd_sub }}</div>{% endif %}{% else %}—{% endif %}
                 </td>
             </tr>
         {% endfor %}
@@ -652,6 +800,484 @@
     {% endif %}
     </div>
 </div>
+
+{# ══════════════════════════════════════════════════════
+   MODAIS — KPIs
+══════════════════════════════════════════════════════ #}
+
+{# ── Modal: Laboratórios ── #}
+<div class="vg-modal-backdrop" id="modal-labs">
+    <div class="vg-modal">
+        <div class="vg-modal-hd">
+            <div>
+                <div class="vg-modal-label">Laboratórios Ativos no Radar</div>
+                <div class="vg-modal-title">{{ kpi.labs_today|default(0) }} redes monitoradas hoje</div>
+            </div>
+            <button class="vg-modal-close" data-close>✕</button>
+        </div>
+        <div class="vg-modal-body">
+            <div class="vg-modal-stat-row">
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">{{ kpi.labs_today|default(0) }}</div>
+                    <div class="vg-modal-stat-lbl">Hoje</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">{{ kpi.labs_last_week|default(0) }}</div>
+                    <div class="vg-modal-stat-lbl">7 dias atrás</div>
+                </div>
+                <div class="vg-modal-stat">
+                    {% set delta = kpi.labs_delta|default(0) %}
+                    <div class="vg-modal-stat-val" style="color:{% if delta > 0 %}var(--green){% elseif delta < 0 %}#ef4444{% else %}var(--text-secondary){% endif %}">
+                        {{ delta > 0 ? '+' : '' }}{{ delta }}
+                    </div>
+                    <div class="vg-modal-stat-lbl">Variação</div>
+                </div>
+            </div>
+            <div class="vg-modal-divider"></div>
+            <p class="vg-modal-note">
+                Cada laboratório representa uma <strong>rede distinta</strong> identificada por razão social.
+                Unidades de uma mesma rede são consolidadas para evitar distorções na análise competitiva.
+            </p>
+            {% if competitiveness is not empty %}
+            <div class="vg-modal-sub-title">Redes com maior presença hoje</div>
+            <div class="vg-modal-scroll-list">
+                {% for u in competitiveness %}
+                <div class="vg-modal-list-row">
+                    <span class="vg-modal-list-name">{{ u.facility_name }}</span>
+                    <span class="vg-pop" style="flex-shrink:0">
+                        <span class="vg-modal-list-val vg-pop-trigger">{{ u.qtd_liderancas }}</span>
+                        <span class="vg-popover">
+                            <div class="vg-popover-title">Menor preço em</div>
+                            {% for proc in labProcedures[u.facility_name]|default([]) %}
+                            <div class="vg-popover-row">
+                                <span>{{ proc.name|slice(0,22) }}{% if proc.name|length > 22 %}…{% endif %}</span>
+                                <span class="vg-popover-badge">R$ {{ proc.price|number_format(2,',','.') }}</span>
+                            </div>
+                            {% endfor %}
+                        </span>
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# ── Modal: Procedimentos ── #}
+<div class="vg-modal-backdrop" id="modal-procedures">
+    <div class="vg-modal vg-modal-wide">
+        <div class="vg-modal-hd">
+            <div>
+                <div class="vg-modal-label">Procedimentos Monitorados</div>
+                <div class="vg-modal-title">{{ kpi.procedures_today|default(0) }} procedimentos ativos</div>
+            </div>
+            <button class="vg-modal-close" data-close>✕</button>
+        </div>
+        <div class="vg-modal-body">
+            <div class="vg-modal-stat-row">
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">{{ kpi.procedures_today|default(0) }}</div>
+                    <div class="vg-modal-stat-lbl">Procedimentos</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">{{ kpi.labs_today|default(0) }}</div>
+                    <div class="vg-modal-stat-lbl">Laboratórios</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">
+                        {% if kpi.avg_market_today %}R$ {{ kpi.avg_market_today|number_format(2,',','.') }}{% else %}—{% endif %}
+                    </div>
+                    <div class="vg-modal-stat-lbl">Preço médio geral</div>
+                </div>
+            </div>
+            <div class="vg-modal-divider"></div>
+            <div class="vg-modal-sub-title">Todos os procedimentos monitorados hoje</div>
+            <table class="vg-modal-table">
+                <thead>
+                    <tr>
+                        <th>Procedimento</th>
+                        <th>Lab. mais barato</th>
+                        <th>Mín.</th>
+                        <th>Média</th>
+                        <th>Máx.</th>
+                        <th>Lab. mais caro</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for row in thermoData %}
+                {% set pid = row.procedure_id %}
+                <tr>
+                    <td>{{ row.name }}</td>
+                    <td style="color:var(--text-secondary);font-size:11px">{{ procPriceDetails[pid].min_lab|default('—')|slice(0,20) }}</td>
+                    <td style="color:var(--green);font-weight:600">R$ {{ row.min_price|number_format(2,',','.') }}</td>
+                    <td>R$ {{ row.avg_price|number_format(2,',','.') }}</td>
+                    <td style="color:#ef4444">R$ {{ row.max_price|number_format(2,',','.') }}</td>
+                    <td style="color:var(--text-secondary);font-size:11px">{{ procPriceDetails[pid].max_lab|default('—')|slice(0,20) }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ── Modal: Maior Dispersão ── #}
+<div class="vg-modal-backdrop" id="modal-dispersion">
+    <div class="vg-modal">
+        <div class="vg-modal-hd">
+            <div>
+                <div class="vg-modal-label">Maior Dispersão de Preço</div>
+                <div class="vg-modal-title">Top procedimentos por volatilidade</div>
+            </div>
+            <button class="vg-modal-close" data-close>✕</button>
+        </div>
+        <div class="vg-modal-body">
+            {% if kpi.max_dispersion_name %}
+            <div class="vg-modal-highlight">
+                <div class="vg-modal-highlight-name">{{ kpi.max_dispersion_name }}</div>
+                <div class="vg-modal-highlight-range">
+                    R$ {{ kpi.max_dispersion_min|number_format(2,',','.') }}
+                    <span class="vg-arrow">→</span>
+                    R$ {{ kpi.max_dispersion_max|number_format(2,',','.') }}
+                </div>
+                <div class="vg-modal-highlight-badge">{{ kpi.max_dispersion_pct|number_format(0) }}% de dispersão</div>
+            </div>
+            {% endif %}
+            <div class="vg-modal-divider"></div>
+            <div class="vg-modal-sub-title">Ranking por dispersão hoje</div>
+            <table class="vg-modal-table">
+                <thead>
+                    <tr><th>Procedimento</th><th>Lab. mais barato</th><th>Mín.</th><th>Máx.</th><th>Dispersão</th></tr>
+                </thead>
+                <tbody>
+                {% set sortedDisp = thermoData|sort((a,b) => b.dispersion_pct <=> a.dispersion_pct) %}
+                {% for row in sortedDisp|slice(0,10) %}
+                {% set pid = row.procedure_id %}
+                <tr>
+                    <td>{{ row.name|slice(0,26) }}{% if row.name|length > 26 %}…{% endif %}</td>
+                    <td style="color:var(--text-secondary);font-size:11px">{{ procPriceDetails[pid].min_lab|default('—')|slice(0,18) }}</td>
+                    <td style="color:var(--green)">R$ {{ row.min_price|number_format(2,',','.') }}</td>
+                    <td style="color:#ef4444">R$ {{ row.max_price|number_format(2,',','.') }}</td>
+                    <td>
+                        <span class="vg-disp-badge {% if row.dispersion_pct > 100 %}disp-high{% elseif row.dispersion_pct > 50 %}disp-mid{% else %}disp-low{% endif %}">
+                            {{ row.dispersion_pct|number_format(0) }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ── Modal: Menor Preço do Dia ── #}
+<div class="vg-modal-backdrop" id="modal-cheapest">
+    <div class="vg-modal">
+        <div class="vg-modal-hd">
+            <div>
+                <div class="vg-modal-label">Menor Preço do Dia</div>
+                <div class="vg-modal-title">Procedimentos mais acessíveis</div>
+            </div>
+            <button class="vg-modal-close" data-close>✕</button>
+        </div>
+        <div class="vg-modal-body">
+            {% if kpi.cheapest_name %}
+            <div class="vg-modal-highlight">
+                <div class="vg-modal-highlight-name">{{ kpi.cheapest_name }}</div>
+                <div class="vg-modal-highlight-range" style="color:var(--green)">
+                    R$ {{ kpi.cheapest_price|number_format(2,',','.') }}
+                </div>
+                <div class="vg-modal-highlight-badge" style="background:#d1fae5;color:#065f46;border-color:#6ee7b7">
+                    Menor preço absoluto hoje
+                </div>
+            </div>
+            {% endif %}
+            <div class="vg-modal-divider"></div>
+            <div class="vg-modal-sub-title">Todos os procedimentos por preço mínimo</div>
+            <table class="vg-modal-table">
+                <thead>
+                    <tr><th>Procedimento</th><th>Laboratório</th><th>Menor preço</th><th>Média</th></tr>
+                </thead>
+                <tbody>
+                {% set sortedMin = thermoData|sort((a,b) => a.min_price <=> b.min_price) %}
+                {% for row in sortedMin %}
+                {% set pid = row.procedure_id %}
+                <tr>
+                    <td>{{ row.name|slice(0,26) }}{% if row.name|length > 26 %}…{% endif %}</td>
+                    <td style="color:var(--text-secondary);font-size:11px">{{ procPriceDetails[pid].min_lab|default('—')|slice(0,20) }}</td>
+                    <td style="color:var(--green);font-weight:700">R$ {{ row.min_price|number_format(2,',','.') }}</td>
+                    <td style="color:var(--text-secondary)">R$ {{ row.avg_price|number_format(2,',','.') }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ── Modal: Arbitragem ── #}
+<div class="vg-modal-backdrop" id="modal-arbitrage">
+    <div class="vg-modal vg-modal-wide">
+        <div class="vg-modal-hd">
+            <div>
+                <div class="vg-modal-label">Oportunidade de Arbitragem</div>
+                <div class="vg-modal-title">Maior margem entre mín. e máx.</div>
+            </div>
+            <button class="vg-modal-close" data-close>✕</button>
+        </div>
+        <div class="vg-modal-body">
+            <div class="vg-modal-stat-row">
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val" style="color:#ef4444">
+                        +{{ kpi.max_dispersion_pct|default(0)|number_format(0) }}%
+                    </div>
+                    <div class="vg-modal-stat-lbl">Maior dispersão</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">
+                        {% if kpi.max_dispersion_min and kpi.max_dispersion_max %}
+                            R$ {{ (kpi.max_dispersion_max - kpi.max_dispersion_min)|number_format(2,',','.') }}
+                        {% else %}—{% endif %}
+                    </div>
+                    <div class="vg-modal-stat-lbl">Diferença absoluta (R$)</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">{{ kpi.procedures_today|default(0) }}</div>
+                    <div class="vg-modal-stat-lbl">Proc. analisados</div>
+                </div>
+            </div>
+            <div class="vg-modal-divider"></div>
+            <div class="vg-modal-sub-title">Maiores oportunidades de arbitragem</div>
+            <table class="vg-modal-table">
+                <thead>
+                    <tr><th>Procedimento</th><th>Lab. mais barato</th><th>Mín.</th><th>Lab. mais caro</th><th>Máx.</th><th>Spread</th></tr>
+                </thead>
+                <tbody>
+                {% set sortedArb = thermoData|sort((a,b) => (b.max_price - b.min_price) <=> (a.max_price - a.min_price)) %}
+                {% for row in sortedArb|slice(0,10) %}
+                {% set pid = row.procedure_id %}
+                {% set spread = row.max_price - row.min_price %}
+                <tr>
+                    <td>{{ row.name|slice(0,22) }}{% if row.name|length > 22 %}…{% endif %}</td>
+                    <td style="color:var(--text-secondary);font-size:11px">{{ procPriceDetails[pid].min_lab|default('—')|slice(0,16) }}</td>
+                    <td style="color:var(--green)">R$ {{ row.min_price|number_format(2,',','.') }}</td>
+                    <td style="color:var(--text-secondary);font-size:11px">{{ procPriceDetails[pid].max_lab|default('—')|slice(0,16) }}</td>
+                    <td style="color:#ef4444">R$ {{ row.max_price|number_format(2,',','.') }}</td>
+                    <td style="font-weight:700">
+                        <span class="vg-disp-badge disp-high">+R$ {{ spread|number_format(2,',','.') }}</span>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ── Modal: Tendência Semanal ── #}
+<div class="vg-modal-backdrop" id="modal-trend">
+    <div class="vg-modal">
+        <div class="vg-modal-hd">
+            <div>
+                <div class="vg-modal-label">Tendência de Preços</div>
+                <div class="vg-modal-title">Evolução dos últimos 7 dias</div>
+            </div>
+            <button class="vg-modal-close" data-close>✕</button>
+        </div>
+        <div class="vg-modal-body">
+            <div class="vg-modal-stat-row">
+                {% if trendData is not empty %}
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">R$ {{ trendData|first.avg_price|number_format(2,',','.') }}</div>
+                    <div class="vg-modal-stat-lbl">Início do período</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">R$ {{ trendData|last.avg_price|number_format(2,',','.') }}</div>
+                    <div class="vg-modal-stat-lbl">Hoje</div>
+                </div>
+                <div class="vg-modal-stat">
+                    {% set trendDelta = trendData|last.avg_price - trendData|first.avg_price %}
+                    <div class="vg-modal-stat-val" style="color:{% if trendDelta < 0 %}var(--green){% else %}#ef4444{% endif %}">
+                        {{ trendDelta > 0 ? '+' : '' }}R$ {{ trendDelta|number_format(2,',','.') }}
+                    </div>
+                    <div class="vg-modal-stat-lbl">Variação</div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="vg-modal-divider"></div>
+            <div class="vg-modal-sub-title">Preço médio por dia</div>
+            <div style="height:180px;margin-bottom:16px">
+                <canvas id="trendChartModal"></canvas>
+            </div>
+            <table class="vg-modal-table">
+                <thead><tr><th>Data</th><th>Preço médio</th></tr></thead>
+                <tbody>
+                {% for d in trendData %}
+                <tr>
+                    <td>{{ d.collected_date|date('d/m/Y') }}</td>
+                    <td style="font-weight:600">R$ {{ d.avg_price|number_format(2,',','.') }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ── Modal: Ranking completo ── #}
+<div class="vg-modal-backdrop" id="modal-ranking">
+    <div class="vg-modal">
+        <div class="vg-modal-hd">
+            <div>
+                <div class="vg-modal-label">Ranking de Competitividade</div>
+                <div class="vg-modal-title">Todas as redes monitoradas</div>
+            </div>
+            <button class="vg-modal-close" data-close>✕</button>
+        </div>
+        <div class="vg-modal-body">
+            <p class="vg-modal-note">
+                Ranking baseado no número de procedimentos em que o laboratório oferece o <strong>menor preço</strong> do mercado hoje.
+            </p>
+            <div class="vg-modal-divider"></div>
+            {% if competitiveness is not empty %}
+            {% set maxLeads = competitiveness[0].qtd_liderancas %}
+            <div class="vg-modal-scroll-list" style="max-height:380px">
+                {% for u in competitiveness %}
+                <div class="vg-modal-list-row">
+                    <div>
+                        <div style="font-size:13px;font-weight:600;color:var(--text-primary)">
+                            {{ loop.index }}. {{ u.facility_name }}
+                        </div>
+                        {% set score = maxLeads > 0 ? (u.qtd_liderancas / maxLeads * 100)|round : 0 %}
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Índice: {{ score }}/100</div>
+                    </div>
+                    <span class="vg-pop" style="flex-shrink:0">
+                        <span class="vg-modal-list-val vg-pop-trigger">{{ u.qtd_liderancas }} proc.</span>
+                        <span class="vg-popover">
+                            <div class="vg-popover-title">Menor preço em</div>
+                            {% for proc in labProcedures[u.facility_name]|default([]) %}
+                            <div class="vg-popover-row">
+                                <span>{{ proc.name|slice(0,22) }}{% if proc.name|length > 22 %}…{% endif %}</span>
+                                <span class="vg-popover-badge">R$ {{ proc.price|number_format(2,',','.') }}</span>
+                            </div>
+                            {% endfor %}
+                        </span>
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# ── Modais individuais por laboratório (ranking sidebar) ── #}
+{% for u in competitiveness|slice(0,6) %}
+<div class="vg-modal-backdrop" id="modal-lab-{{ loop.index0 }}">
+    <div class="vg-modal">
+        <div class="vg-modal-hd">
+            <div>
+                <div class="vg-modal-label">Perfil Competitivo</div>
+                <div class="vg-modal-title">{{ u.facility_name|slice(0,30) }}</div>
+            </div>
+            <button class="vg-modal-close" data-close>✕</button>
+        </div>
+        <div class="vg-modal-body">
+            <div class="vg-modal-stat-row">
+                <div class="vg-modal-stat">
+                    {% set maxLeads2 = competitiveness[0].qtd_liderancas %}
+                    {% set score2 = maxLeads2 > 0 ? (u.qtd_liderancas / maxLeads2 * 100)|round : 0 %}
+                    <div class="vg-modal-stat-val" style="color:var(--brand)">{{ score2 }}/100</div>
+                    <div class="vg-modal-stat-lbl">Índice Comp.</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">{{ u.qtd_liderancas }}</div>
+                    <div class="vg-modal-stat-lbl">Proc. mais baratos</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">#{{ loop.index }}</div>
+                    <div class="vg-modal-stat-lbl">Posição no ranking</div>
+                </div>
+            </div>
+            <div class="vg-modal-divider"></div>
+            <div class="vg-modal-sub-title">Procedimentos com menor preço do mercado</div>
+            <table class="vg-modal-table">
+                <thead><tr><th>Procedimento</th><th>Preço</th></tr></thead>
+                <tbody>
+                {% for proc in labProcedures[u.facility_name]|default([]) %}
+                <tr>
+                    <td>{{ proc.name }}</td>
+                    <td style="color:var(--green);font-weight:700">R$ {{ proc.price|number_format(2,',','.') }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{# ── Modais individuais por procedimento (termômetro + heatmap) ── #}
+{% for row in thermoData %}
+{% set pid = row.procedure_id %}
+<div class="vg-modal-backdrop" id="modal-proc-{{ pid }}">
+    <div class="vg-modal">
+        <div class="vg-modal-hd">
+            <div>
+                <div class="vg-modal-label">Procedimento · TUSS {{ row.tuss_code }}</div>
+                <div class="vg-modal-title">{{ row.name|slice(0,40) }}</div>
+            </div>
+            <button class="vg-modal-close" data-close>✕</button>
+        </div>
+        <div class="vg-modal-body">
+            <div class="vg-modal-stat-row">
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val" style="color:var(--green)">R$ {{ row.min_price|number_format(2,',','.') }}</div>
+                    <div class="vg-modal-stat-lbl">Menor preço</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">R$ {{ row.avg_price|number_format(2,',','.') }}</div>
+                    <div class="vg-modal-stat-lbl">Média de mercado</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val" style="color:#ef4444">R$ {{ row.max_price|number_format(2,',','.') }}</div>
+                    <div class="vg-modal-stat-lbl">Maior preço</div>
+                </div>
+            </div>
+            <div class="vg-modal-divider"></div>
+            <div class="vg-modal-stat-row" style="margin-bottom:16px">
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">
+                        <span class="vg-disp-badge {% if row.dispersion_pct > 100 %}disp-high{% elseif row.dispersion_pct > 50 %}disp-mid{% else %}disp-low{% endif %}" style="font-size:16px;padding:4px 12px">
+                            {{ row.dispersion_pct|number_format(0) }}%
+                        </span>
+                    </div>
+                    <div class="vg-modal-stat-lbl">Dispersão</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">{{ row.total_units }}</div>
+                    <div class="vg-modal-stat-lbl">Labs cotando</div>
+                </div>
+                <div class="vg-modal-stat">
+                    <div class="vg-modal-stat-val">R$ {{ (row.max_price - row.min_price)|number_format(2,',','.') }}</div>
+                    <div class="vg-modal-stat-lbl">Spread absoluto</div>
+                </div>
+            </div>
+            <div class="vg-modal-sub-title">Referências de mercado</div>
+            <div class="vg-modal-list-row">
+                <span class="vg-modal-list-name">🏆 Lab. mais barato</span>
+                <span class="vg-modal-list-val" style="background:#d1fae5;color:#065f46">{{ procPriceDetails[pid].min_lab|default('—') }}</span>
+            </div>
+            <div class="vg-modal-list-row">
+                <span class="vg-modal-list-name">⚠️ Lab. mais caro</span>
+                <span class="vg-modal-list-val" style="background:#fee2e2;color:#991b1b">{{ procPriceDetails[pid].max_lab|default('—') }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
 
 </div>{# /vg-wrap #}
 {% endblock %}
@@ -667,69 +1293,150 @@ const trendLabels = {{ trendLabels|raw }};
 const trendAvg    = {{ trendAvgValues|raw }};
 const fmtD = d => { if(!d) return ''; const p=d.split('-'); return p[2]+'/'+p[1]; };
 
-const ctx  = document.getElementById('trendChart').getContext('2d');
-const grad = ctx.createLinearGradient(0, 0, 0, 200);
-grad.addColorStop(0, 'rgba(37,99,235,.18)');
-grad.addColorStop(1, 'rgba(37,99,235,0)');
+function buildChart(canvasId, labels, data) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx  = canvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 200);
+    grad.addColorStop(0, 'rgba(37,99,235,.18)');
+    grad.addColorStop(1, 'rgba(37,99,235,0)');
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels.map(fmtD),
+            datasets: [{
+                data: data,
+                borderColor: '#2563eb',
+                backgroundColor: grad,
+                borderWidth: 2.5,
+                pointRadius: 3,
+                pointBackgroundColor: '#2563eb',
+                pointHoverRadius: 5,
+                tension: 0.4,
+                fill: true,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1a1d2e',
+                    titleColor: '#e2e8f0',
+                    bodyColor: '#9399ad',
+                    borderColor: '#2d3251',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: { label: c => ' R$ ' + c.parsed.y.toFixed(2).replace('.', ',') },
+                },
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: '#9399ad', maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, bounds: 'data' },
+                y: { display: true, grid: { color: '#f0f2f8', drawBorder: false }, ticks: { color: '#9399ad', callback: v => 'R$ ' + v.toFixed(0), maxTicksLimit: 5 } },
+            },
+            layout: { padding: { right: 12 } },
+        },
+    });
+}
 
-new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: trendLabels.map(fmtD),
-        datasets: [{
-            data: trendAvg,
-            borderColor: '#2563eb',
-            backgroundColor: grad,
-            borderWidth: 2.5,
-            pointRadius: 3,
-            pointBackgroundColor: '#2563eb',
-            pointHoverRadius: 5,
-            tension: 0.4,
-            fill: true,
-        }],
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                backgroundColor: '#1a1d2e',
-                titleColor: '#e2e8f0',
-                bodyColor: '#9399ad',
-                borderColor: '#2d3251',
-                borderWidth: 1,
-                padding: 10,
-                callbacks: {
-                    label: c => ' R$ ' + c.parsed.y.toFixed(2).replace('.', ','),
-                },
-            },
-        },
-        scales: {
-            x: {
-                grid: { display: false },
-                ticks: {
-                    color: '#9399ad',
-                    maxRotation: 0,
-                    autoSkip: true,
-                    maxTicksLimit: 8,
-                },
-                bounds: 'data',
-            },
-            y: {
-                display: true,
-                grid: { color: '#f0f2f8', drawBorder: false },
-                ticks: {
-                    color: '#9399ad',
-                    callback: v => 'R$ ' + v.toFixed(0),
-                    maxTicksLimit: 5,
-                },
-            },
-        },
-        layout: {
-            padding: { right: 12 },
-        },
-    },
-});
+buildChart('trendChart', trendLabels, trendAvg);
+
+// ── Modal system ─────────────────────────────────────
+(function () {
+    let trendModalChart = null;
+
+    function openModal(id) {
+        if (!id) return;
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        modal.classList.add('is-open');
+        document.body.classList.add('modal-open');
+
+        // Inicializa chart do modal de tendência na primeira abertura
+        if (id === 'modal-trend' && !trendModalChart) {
+            setTimeout(() => {
+                trendModalChart = buildChart('trendChartModal', trendLabels, trendAvg);
+            }, 50);
+        }
+    }
+
+    function closeModal(modal) {
+        modal.classList.remove('is-open');
+        if (!document.querySelector('.vg-modal-backdrop.is-open')) {
+            document.body.classList.remove('modal-open');
+        }
+    }
+
+    // Abre por data-modal em qualquer elemento
+    document.addEventListener('click', e => {
+        const trigger = e.target.closest('[data-modal]');
+        if (!trigger) return;
+        // Não propaga se clicou dentro de um modal aberto em elemento sem data-modal
+        if (trigger.closest('.vg-modal-backdrop.is-open') && !trigger.dataset.modal) return;
+        e.stopPropagation();
+        openModal(trigger.dataset.modal);
+    });
+
+    // Fecha pelo ✕
+    document.querySelectorAll('[data-close]').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            closeModal(btn.closest('.vg-modal-backdrop'));
+        });
+    });
+
+    // Fecha clicando no backdrop
+    document.querySelectorAll('.vg-modal-backdrop').forEach(backdrop => {
+        backdrop.addEventListener('click', e => {
+            if (e.target === backdrop) closeModal(backdrop);
+        });
+    });
+
+    // Esc
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.vg-modal-backdrop.is-open').forEach(m => closeModal(m));
+        }
+    });
+
+    // Bloqueia scroll fora do modal body
+    document.querySelectorAll('.vg-modal-backdrop').forEach(backdrop => {
+        backdrop.addEventListener('wheel', e => {
+            const body = backdrop.querySelector('.vg-modal-body');
+            if (!body) return;
+            if (body.contains(e.target) || body === e.target) return;
+            e.preventDefault();
+        }, { passive: false });
+    });
+
+    // Popovers — position fixed para escapar de qualquer overflow
+    document.querySelectorAll('.vg-pop').forEach(pop => {
+        const popover = pop.querySelector('.vg-popover');
+        if (!popover) return;
+
+        pop.addEventListener('mouseenter', () => {
+            const r = pop.getBoundingClientRect();
+            popover.style.position = 'fixed';
+            popover.style.display  = 'block';
+            popover.style.top      = (r.bottom + 8) + 'px';
+
+            // Se sair da tela pela direita, abre à esquerda
+            const rightEdge = window.innerWidth - r.right;
+            if (rightEdge < 260) {
+                popover.style.right = rightEdge + 'px';
+                popover.style.left  = 'auto';
+            } else {
+                popover.style.left  = r.left + 'px';
+                popover.style.right = 'auto';
+            }
+        });
+
+        pop.addEventListener('mouseleave', () => {
+            popover.style.display = 'none';
+        });
+    });
+
+})();
 </script>
 {% endblock %}

@@ -53,9 +53,29 @@ class DashboardController extends AbstractController
         SQL, ['d' => $latestDate]);
 
         // ── KPIs ─────────────────────────────────────────────────────────────
+
+        // ── Laboratórios ativos hoje (distintos por social_name/rede) ────────
+        $labsToday = (int) $connection->fetchOne(<<<SQL
+            SELECT COUNT(DISTINCT COALESCE(u.social_name, u.facility_name))
+            FROM market_price_snapshots mps
+            JOIN market_units u ON u.id = mps.unit_id
+            WHERE DATE(mps.collected_at) = :d
+        SQL, ['d' => $latestDate]);
+
+        // ── Laboratórios ativos 7 dias atrás ─────────────────────────────────
+        $dateLastWeek = date('Y-m-d', strtotime($latestDate . ' -7 days'));
+        $labsLastWeek = (int) $connection->fetchOne(<<<SQL
+            SELECT COUNT(DISTINCT COALESCE(u.social_name, u.facility_name))
+            FROM market_price_snapshots mps
+            JOIN market_units u ON u.id = mps.unit_id
+            WHERE DATE(mps.collected_at) = :d
+        SQL, ['d' => $dateLastWeek]);
+
         $kpi = [
-            'units_today'         => 0,
-            'procedures_today'    => count($summaryData),
+            'labs_today'          => $labsToday,
+            'labs_last_week'      => $labsLastWeek,
+            'labs_delta'          => $labsToday - $labsLastWeek,
+            'procedures_today'    => count($summaryData),   // ← estava sumindo aqui
             'avg_market_today'    => null,
             'max_dispersion_pct'  => 0,
             'max_dispersion_name' => null,
@@ -124,18 +144,68 @@ class DashboardController extends AbstractController
                 GROUP BY procedure_id
             )
             SELECT
-                COALESCE(u.facility_name, u.social_name, '—') AS facility_name,
+                COALESCE(u.social_name, u.facility_name, '—') AS facility_name,
                 COUNT(*) AS qtd_liderancas
             FROM market_price_snapshots s
             JOIN daily_min dm
                 ON s.procedure_id = dm.procedure_id
-               AND s.price = dm.min_price
+            AND s.price = dm.min_price
             JOIN market_units u ON u.id = s.unit_id
             WHERE DATE(s.collected_at) = :d
-            GROUP BY u.facility_name, u.social_name
+            GROUP BY COALESCE(u.social_name, u.facility_name, '—')
             ORDER BY qtd_liderancas DESC
-            LIMIT 10
         SQL, ['d' => $latestDate]);
+
+        // ── Detalhes por laboratório: quais procedimentos lidera ─────────────
+        $labProcedures = [];
+        foreach ($competitiveness as $u) {
+            $procs = $connection->fetchAllAssociative(<<<SQL
+                WITH daily_min AS (
+                    SELECT procedure_id, MIN(price) AS min_price
+                    FROM market_price_snapshots
+                    WHERE DATE(collected_at) = :d
+                    GROUP BY procedure_id
+                )
+                SELECT mp.name, s.price
+                FROM market_price_snapshots s
+                JOIN daily_min dm ON s.procedure_id = dm.procedure_id AND s.price = dm.min_price
+                JOIN market_units u ON u.id = s.unit_id
+                JOIN market_procedures mp ON mp.id = s.procedure_id
+                WHERE DATE(s.collected_at) = :d
+                AND COALESCE(u.social_name, u.facility_name) = :lab
+                ORDER BY s.price
+            SQL, ['d' => $latestDate, 'lab' => $u['facility_name']]);
+
+            $labProcedures[$u['facility_name']] = $procs;
+        }
+
+        // ── Lab com menor e maior preço por procedimento ──────────────────────
+        $procPriceDetails = [];
+        foreach ($summaryData as $row) {
+            $pid = $row['procedure_id'];
+
+            $minLab = $connection->fetchOne(<<<SQL
+                SELECT COALESCE(u.social_name, u.facility_name, '—')
+                FROM market_price_snapshots s
+                JOIN market_units u ON u.id = s.unit_id
+                WHERE DATE(s.collected_at) = :d AND s.procedure_id = :pid
+                ORDER BY s.price ASC LIMIT 1
+            SQL, ['d' => $latestDate, 'pid' => $pid]);
+
+            $maxLab = $connection->fetchOne(<<<SQL
+                SELECT COALESCE(u.social_name, u.facility_name, '—')
+                FROM market_price_snapshots s
+                JOIN market_units u ON u.id = s.unit_id
+                WHERE DATE(s.collected_at) = :d AND s.procedure_id = :pid
+                ORDER BY s.price DESC LIMIT 1
+            SQL, ['d' => $latestDate, 'pid' => $pid]);
+
+            $procPriceDetails[$pid] = [
+                'min_lab' => $minLab ?: '—',
+                'max_lab' => $maxLab ?: '—',
+            ];
+        }
+
 
         // ── Tendência 7 dias ──────────────────────────────────────────────────
         $trendData = $connection->fetchAllAssociative(<<<SQL
@@ -159,7 +229,9 @@ class DashboardController extends AbstractController
             'trendLabels'     => $trendLabels,
             'trendAvgValues'  => $trendAvgValues,
             'competitiveness' => $competitiveness,
+            'labProcedures' => $labProcedures,
             'heatmap'         => $heatmap,
+            'procPriceDetails' => $procPriceDetails,
             'heatmapNames'    => $heatmapNames,
             'procedures'      => [],
             'units'           => [],
