@@ -168,44 +168,74 @@ class ProcedureAnalysisController extends AbstractController
                 'values' => json_encode(array_map('floatval', array_column($trendRows, 'avg_price'))),
             ];
 
-            // ── 5. Dados para mapa de posicionamento (bubble chart) ──────────
-            // price_ratio: quão distante do mínimo (x=dist%, y=avg, r=snapshots)
-            $positioningData = json_encode(array_map(fn($r) => [
-            'label' => mb_substr($r['unit_name'], 0, 20),
-            'x'     => (float)$r['dist_pct'],
-            'y'     => (float)$r['avg_price'],
-            'r'     => min(max((int)$r['snapshots'] * 2, 4), 24),
-            'lat'   => $r['latitude'] ? (float)$r['latitude'] : null,
-            'lng'   => $r['longitude'] ? (float)$r['longitude'] : null,
-            'color' => match($r['position_label']) {
-                'Líder'       => '#059669',
-                'Competitivo' => '#d97706',
-                default       => '#dc2626',
-            },
-            'price' => (float)$r['avg_price'],
-            'position' => $r['position_label'],
-        ], array_slice($rankRows, 0, 30)));
-        }
+            /// ── 5. Dados para o mapa (por unidade física) ────────────────────────────
+            $mapUnits = $connection->fetchAllAssociative(<<<SQL
+                SELECT
+                    COALESCE(u.facility_name, u.social_name, '—')   AS unit_name,
+                    COALESCE(u.social_name, u.facility_name, '—')   AS lab_name,
+                    ROUND(AVG(mps.price)::numeric, 2)                AS price,
+                    COUNT(*)                                          AS snapshots,
+                    u.latitude,
+                    u.longitude
+                FROM market_price_snapshots mps
+                JOIN market_units u ON u.id = mps.unit_id
+                WHERE mps.procedure_id = :pid
+                AND DATE(mps.collected_at) = :ld
+                AND u.latitude IS NOT NULL
+                AND u.longitude IS NOT NULL
+                GROUP BY u.id, u.facility_name, u.social_name, u.latitude, u.longitude
+                ORDER BY price ASC
+            SQL, ['pid' => $procedureId, 'ld' => $latestDate]);
 
-        return $this->render('procedure_analysis/index.html.twig', [
-            'filter'             => $filter,
-            'procedures'         => $procedures,
-            'procedureId'        => $procedureId,
-            'selectedProcedure'  => $selectedProcedure,
-            'tableRows'          => $tableRows,
-            'chartLabels'        => $chartLabels,
-            'chartAvg'           => $chartAvg,
-            'chartMin'           => $chartMin,
-            'chartMax'           => $chartMax,
-            // novos
-            'diag'               => $diag,
-            'spreadValue'        => $spreadValue,
-            'histogram'          => $histogram,
-            'competitiveRanking' => $competitiveRanking,
-            'trendWeek'          => $trendWeek,
-            'positioningData'    => $positioningData,
-        ]);
-    }
+            $minPriceMap = !empty($mapUnits) ? (float)$mapUnits[0]['price'] : 0;
+
+            $positioningData = json_encode(array_map(function($r) use ($minPriceMap) {
+                $dist = $minPriceMap > 0
+                    ? round(((float)$r['price'] - $minPriceMap) / $minPriceMap * 100, 0)
+                    : 0;
+                $position = match(true) {
+                    $dist == 0  => 'Líder',
+                    $dist <= 30 => 'Competitivo',
+                    default     => 'Fora do Mercado',
+                };
+                return [
+                    'label'    => mb_substr($r['unit_name'], 0, 24),
+                    'lab'      => $r['lab_name'],
+                    'lat'      => (float)$r['latitude'],
+                    'lng'      => (float)$r['longitude'],
+                    'price'    => (float)$r['price'],
+                    'color'    => match($position) {
+                        'Líder'       => '#059669',
+                        'Competitivo' => '#d97706',
+                        default       => '#dc2626',
+                    },
+                    'position' => $position,
+                    'r'        => min(max((int)$r['snapshots'] * 2, 4), 14),
+                ];
+            }, $mapUnits));
+
+                    } // fim do if ($procedureId)
+
+                    return $this->render('procedure_analysis/index.html.twig', [
+                        'filter'             => $filter,
+                        'procedures'         => $procedures,
+                        'procedureId'        => $procedureId,
+                        'selectedProcedure'  => $selectedProcedure,
+                        'tableRows'          => $tableRows,
+                        'chartLabels'        => $chartLabels,
+                        'chartAvg'           => $chartAvg,
+                        'chartMin'           => $chartMin,
+                        'chartMax'           => $chartMax,
+                        'diag'               => $diag,
+                        'spreadValue'        => $spreadValue,
+                        'histogram'          => $histogram,
+                        'competitiveRanking' => $competitiveRanking,
+                        'trendWeek'          => $trendWeek,
+                        'positioningData'    => $positioningData,
+                    ]);
+                }
+
+    
 
     /** AJAX endpoint para refresh parcial */
     #[Route('/analise-exames/data', name: 'procedure_analysis_data', methods: ['GET'])]
@@ -232,4 +262,6 @@ class ProcedureAnalysisController extends AbstractController
             'updated_at' => (new \DateTime())->format('H:i:s'),
         ]);
     }
+
+    
 }
