@@ -115,20 +115,20 @@ class ProcedureAnalysisController extends AbstractController
             $minRef = (float)($diag['min_today'] ?? 0);
 
             $rankRows = $connection->fetchAllAssociative(<<<SQL
-                SELECT
-                    COALESCE(u.facility_name, u.social_name, '—')   AS unit_name,
-                    u.city,
-                    u.state,
-                    ROUND(MIN(mps.price)::numeric, 2)                AS price,
-                    ROUND(AVG(mps.price)::numeric, 2)                AS avg_price,
-                    COUNT(*)                                          AS snapshots
-                FROM market_price_snapshots mps
-                JOIN market_units u ON u.id = mps.unit_id
-                WHERE mps.procedure_id = :pid
-                  AND DATE(mps.collected_at) = :ld
-                GROUP BY u.id, u.facility_name, u.social_name, u.city, u.state
-                ORDER BY price ASC
-            SQL, ['pid' => $procedureId, 'ld' => $latestDate]);
+            SELECT
+                COALESCE(u.social_name, u.facility_name, '—')   AS unit_name,
+                ROUND(AVG(mps.price)::numeric, 2)                AS price,
+                ROUND(AVG(mps.price)::numeric, 2)                AS avg_price,
+                COUNT(*)                                          AS snapshots,
+                AVG(u.latitude)                                  AS latitude,
+                AVG(u.longitude)                                 AS longitude
+            FROM market_price_snapshots mps
+            JOIN market_units u ON u.id = mps.unit_id
+            WHERE mps.procedure_id = :pid
+            AND DATE(mps.collected_at) = :ld
+            GROUP BY COALESCE(u.social_name, u.facility_name, '—')
+            ORDER BY price ASC
+        SQL, ['pid' => $procedureId, 'ld' => $latestDate]);
 
             // Adiciona distância percentual do mínimo e label de posição
             foreach ($rankRows as &$r) {
@@ -171,16 +171,20 @@ class ProcedureAnalysisController extends AbstractController
             // ── 5. Dados para mapa de posicionamento (bubble chart) ──────────
             // price_ratio: quão distante do mínimo (x=dist%, y=avg, r=snapshots)
             $positioningData = json_encode(array_map(fn($r) => [
-                'label' => mb_substr($r['unit_name'], 0, 20),
-                'x'     => (float)$r['dist_pct'],
-                'y'     => (float)$r['avg_price'],
-                'r'     => min(max((int)$r['snapshots'] * 2, 4), 24),
-                'color' => match($r['position_label']) {
-                    'Líder'       => '#059669',
-                    'Competitivo' => '#d97706',
-                    default       => '#dc2626',
-                },
-            ], array_slice($rankRows, 0, 30)));
+            'label' => mb_substr($r['unit_name'], 0, 20),
+            'x'     => (float)$r['dist_pct'],
+            'y'     => (float)$r['avg_price'],
+            'r'     => min(max((int)$r['snapshots'] * 2, 4), 24),
+            'lat'   => $r['latitude'] ? (float)$r['latitude'] : null,
+            'lng'   => $r['longitude'] ? (float)$r['longitude'] : null,
+            'color' => match($r['position_label']) {
+                'Líder'       => '#059669',
+                'Competitivo' => '#d97706',
+                default       => '#dc2626',
+            },
+            'price' => (float)$r['avg_price'],
+            'position' => $r['position_label'],
+        ], array_slice($rankRows, 0, 30)));
         }
 
         return $this->render('procedure_analysis/index.html.twig', [
