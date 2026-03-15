@@ -59,6 +59,12 @@ class MarketUnit
     #[ORM\Column(name: 'created_at', type: 'datetime', options: ['default' => 'now()'])]
     private \DateTimeInterface $createdAt;
 
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $latitude = null;
+
+    #[ORM\Column(type: 'float', nullable: true)]
+    private ?float $longitude = null;
+
     public function __construct() { $this->createdAt = new \DateTime(); }
 
     public function getId(): ?Uuid { return $this->id; }
@@ -86,6 +92,12 @@ class MarketUnit
     public function getRatingCount(): ?int { return $this->ratingCount; }
     public function setRatingCount(?int $v): static { $this->ratingCount = $v; return $this; }
     public function getCreatedAt(): \DateTimeInterface { return $this->createdAt; }
+    public function getLatitude(): ?float { return $this->latitude; }
+    public function setLatitude(?float $v): static { $this->latitude = $v; return $this; }
+
+    public function getLongitude(): ?float { return $this->longitude; }
+    public function setLongitude(?float $v): static { $this->longitude = $v; return $this; }
+
 
     /** Nome de exibição: prefere facility_name, fallback para social_name */
     public function getDisplayName(): string
